@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <title>jmind - 编辑器</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/editor.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230A84FF'/><text x='50' y='68' font-size='55' font-weight='bold' fill='white' text-anchor='middle' font-family='sans-serif'>J</text></svg>">
+</head>
+<body>
+    <div id="app">
+        <!-- 工具栏 -->
+        <div class="toolbar" id="toolbar">
+            <div class="logo" id="btn-back" title="返回首页">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                jmind
+            </div>
+            <div class="divider"></div>
+            <button id="btn-save" class="primary" title="保存 (Ctrl+S)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <span class="label">保存</span>
+            </button>
+            <button id="btn-undo" title="撤销 (Ctrl+Z)">↶ <span class="label">撤销</span></button>
+            <button id="btn-redo" title="重做 (Ctrl+Y)">↷ <span class="label">重做</span></button>
+            <div class="divider"></div>
+            <button id="btn-add-child" title="添加子节点 (Tab)">＋ <span class="label">子节点</span></button>
+            <button id="btn-add-sibling" title="添加兄弟节点 (Enter)">↔ <span class="label">兄弟</span></button>
+            <button id="btn-delete" class="danger" title="删除节点 (Delete)">✕ <span class="label">删除</span></button>
+            <div class="divider"></div>
+            <button id="btn-collapse" title="折叠/展开 (Space)">▾ <span class="label">折叠</span></button>
+            <button id="btn-search" title="搜索节点 (Ctrl+F)">🔍 <span class="label">搜索</span></button>
+            <div class="divider"></div>
+            <button id="btn-zoom-in" title="放大 (+)">＋</button>
+            <button id="btn-zoom-out" title="缩小 (-)">－</button>
+            <button id="btn-fit" title="适应画布 (0)">⤢</button>
+            <div class="divider"></div>
+            <button id="btn-export" title="导出为 .jmind 文件">📄 <span class="label">导出</span></button>
+            <button id="btn-export-png" title="导出为 PNG 图片">🖼️ <span class="label">PNG</span></button>
+            <div class="spacer"></div>
+            <div class="save-status" id="save-status">
+                <span class="dot"></span>
+                <span class="text">已保存</span>
+            </div>
+            <div class="divider"></div>
+            <button id="btn-clear" class="danger" title="清空子节点，保留中心主题">🗑️ <span class="label">清屏</span></button>
+        </div>
+
+        <!-- 画布 -->
+        <div class="canvas-container" id="canvas-container">
+            <canvas id="canvas"></canvas>
+
+            <!-- 搜索栏 -->
+            <div class="search-bar" id="search-bar">
+                <input type="text" id="search-input" placeholder="搜索节点..." autocomplete="off">
+                <span class="search-count" id="search-count"></span>
+                <button class="search-nav-btn" id="search-prev" title="上一个 (Shift+Enter)">↑</button>
+                <button class="search-nav-btn" id="search-next" title="下一个 (Enter)">↓</button>
+                <button class="search-close" id="search-close" title="关闭 (Esc)">✕</button>
+            </div>
+        </div>
+
+        <!-- 右键菜单 -->
+        <div class="context-menu" id="context-menu">
+            <div class="menu-item" data-action="add-child">➕ 添加子节点</div>
+            <div class="menu-item" data-action="add-sibling">👥 添加兄弟节点</div>
+            <div class="menu-separator"></div>
+            <div class="menu-item" data-action="edit">✏️ 编辑文本</div>
+            <div class="menu-item" data-action="change-color">🎨 更改颜色</div>
+            <div class="color-picker" id="color-picker"></div>
+            <div class="menu-separator"></div>
+            <div class="menu-item" data-action="toggle-collapse">🔽 折叠/展开</div>
+            <div class="menu-item" data-action="copy">📋 复制节点</div>
+            <div class="menu-item" data-action="paste">📌 粘贴节点</div>
+            <div class="menu-item" data-action="duplicate">📄 复制为副本</div>
+            <div class="menu-separator"></div>
+            <div class="menu-item danger" data-action="delete">🗑️ 删除节点</div>
+        </div>
+
+        <!-- 拖拽指示 -->
+        <div class="drop-indicator" id="drop-indicator"></div>
+
+        <!-- Toast -->
+        <div class="toast" id="toast"></div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <div class="status-left">
+                <span id="stats">节点: 0 | 缩放: 100%</span>
+            </div>
+            <div class="status-right">
+                <kbd>Tab</kbd>子
+                <kbd>Enter</kbd>兄弟
+                <kbd>Del</kbd>删除
+                <kbd>F2</kbd>编辑
+                <kbd>Space</kbd>折叠
+                <kbd>Ctrl+Z</kbd>撤销
+                <kbd>Ctrl+F</kbd>搜索
+            </div>
+        </div>
+    </div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/mindmap.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/editor-app.js"></script>
+</body>
+</html>

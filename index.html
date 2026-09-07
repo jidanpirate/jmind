@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="jmind - 本地优先的在线思维导图工具，支持拖拽编辑、导出PNG、撤销重做、节点搜索">
+    <title>jmind — 思维导图</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230A84FF'/><text x='50' y='68' font-size='55' font-weight='bold' fill='white' text-anchor='middle' font-family='sans-serif'>J</text></svg>">
+</head>
+<body>
+    <header class="site-header">
+        <nav class="container" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">J</span> jmind
+            </a>
+            <div class="nav-links">
+                <a href="editor.html">新建</a>
+                <a href="settings.html">设置</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <section class="hero">
+            <h1>思维导图，<span>简单而强大</span></h1>
+            <p>快速构建你的想法，支持本地保存、导入导出、撤销重做、节点搜索，随时随地编辑。</p>
+            <div class="hero-actions">
+                <button class="btn" id="btn-new">新建导图</button>
+                <button class="btn btn-ghost" id="btn-import">导入文件</button>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <div class="feature-title">可视化编辑</div>
+                <div class="feature-desc">拖拽节点、缩放画布、流畅交互</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💾</div>
+                <div class="feature-title">本地优先</div>
+                <div class="feature-desc">数据存储在浏览器，隐私安全</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🖼️</div>
+                <div class="feature-title">导出 PNG</div>
+                <div class="feature-desc">高清导出思维导图为图片</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⌨️</div>
+                <div class="feature-title">快捷键</div>
+                <div class="feature-desc">Tab/Enter/Delete 高效操作</div>
+            </div>
+        </section>
+
+        <div class="main-panel">
+            <div class="section-title">
+                最近打开
+                <span class="count" id="file-count">0 个文件</span>
+            </div>
+            <div class="file-list" id="file-list">
+                <div class="empty">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <span>jmind · 本地优先的思维导图工具 · 数据仅存储在你的浏览器中</span>
+    </footer>
+
+    <input type="file" id="file-input" accept=".jmind,.json,application/json,text/plain">
+
+    <div class="toast" id="toast"></div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/index-app.js"></script>
+</body>
+</html>

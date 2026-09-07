@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jmind - 设置</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/settings.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230A84FF'/><text x='50' y='68' font-size='55' font-weight='bold' fill='white' text-anchor='middle' font-family='sans-serif'>J</text></svg>">
+</head>
+<body>
+    <div class="settings-container">
+        <a href="index.html" class="back-link">← 返回首页</a>
+
+        <div class="settings-header">
+            <h1>⚙️ 设置</h1>
+        </div>
+
+        <!-- 主题 -->
+        <div class="setting-group">
+            <label>主题颜色</label>
+            <div class="theme-options" id="theme-options">
+                <div class="theme-option" data-theme="default" title="默认（浅色）">浅色</div>
+                <div class="theme-option" data-theme="dark" title="深色模式">深色</div>
+                <div class="theme-option" data-theme="green" title="绿色主题">绿色</div>
+                <div class="theme-option" data-theme="pink" title="粉色主题">粉色</div>
+                <div class="theme-option" data-theme="blue" title="蓝色主题">蓝色</div>
+            </div>
+        </div>
+
+        <!-- 语言 -->
+        <div class="setting-group">
+            <label>
+                语言 / Language
+                <div class="setting-desc">界面语言设置（多语言支持开发中）</div>
+            </label>
+            <div class="language-options" id="language-options">
+                <div class="language-option" data-lang="zh">中文</div>
+                <div class="language-option" data-lang="en">English</div>
+            </div>
+        </div>
+
+        <!-- 数据管理 -->
+        <div class="data-section">
+            <h3>📦 数据管理</h3>
+            <p>所有数据均存储在你的浏览器本地（localStorage），不会上传到任何服务器。</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn btn-ghost" id="btn-export-data">📤 导出备份</button>
+                <button class="btn btn-danger" id="btn-clear-data">🗑️ 清除所有数据</button>
+            </div>
+        </div>
+
+        <!-- 操作 -->
+        <div class="actions">
+            <button class="btn" id="btn-save">完成</button>
+        </div>
+
+        <!-- 关于 -->
+        <div class="about-section">
+            <div class="app-name">jmind</div>
+            <div class="version" id="app-version">v1.0.0</div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/settings-app.js"></script>
+</body>
+</html>
