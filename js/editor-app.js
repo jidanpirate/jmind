@@ -34,7 +34,7 @@
   let dragOverNodeId = null;
   let dragOverPosition = null;
   let isDragging = false;
-  const DRAG_THRESHOLD = 5;
+  const DRAG_THRESHOLD = 8;
   let searchResultIds = [];
   let searchIndex = -1;
 
@@ -577,7 +577,13 @@
   function onDoubleClick(e) {
     const pos = getMousePos(e);
     const hit = JmindRenderer.hitTest(pos.x, pos.y, JmindLayout.getPositions());
-    if (hit && hit.type === 'node') startEditing(hit.id);
+    if (hit && hit.type === 'node') {
+      startEditing(hit.id);
+    } else {
+      // 后备：如果双击位置没命中节点，但有选中的节点，编辑选中节点
+      const selected = JmindRenderer.getSelected();
+      if (selected) startEditing(selected);
+    }
   }
 
   function onContextMenu(e) {
