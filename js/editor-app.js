@@ -117,7 +117,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = (mindMap.text || '思维导图') + '.jmind';
+    a.download = (mindMap.text || '思维导图') + '.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -817,6 +817,11 @@
       const root = JmindCore.getMindMap();
       if (selected && selected !== root?.id) doAddSibling(selected);
       else showToast('请先选择一个非根节点', 'error');
+    });
+    document.getElementById('btn-edit').addEventListener('click', () => {
+      const selected = JmindRenderer.getSelected();
+      if (selected) startEditing(selected);
+      else showToast('请先选择一个节点', 'warning');
     });
     document.getElementById('btn-delete').addEventListener('click', () => {
       const selected = JmindRenderer.getSelected();
