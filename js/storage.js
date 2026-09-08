@@ -28,6 +28,40 @@ const JmindStorage = (function () {
     return settings;
   }
 
+  // ---------- 主题（外观模式 × 强调色，两个独立维度） ----------
+  const MODES = ['light', 'dark'];
+  const ACCENTS = ['blue', 'green', 'pink', 'purple', 'orange'];
+
+  // 归一化主题偏好，并兼容旧版单一 theme 字段
+  function getThemePrefs() {
+    const s = getSettings();
+    let mode = s.mode;
+    let accent = s.accent;
+    if (!MODES.includes(mode) || !ACCENTS.includes(accent)) {
+      // 旧版 theme -> [mode, accent] 迁移映射
+      const legacyMap = {
+        dark: ['dark', 'blue'],
+        green: ['light', 'green'],
+        pink: ['light', 'pink'],
+        blue: ['light', 'blue'],
+        default: ['light', 'blue']
+      };
+      const [lm, la] = legacyMap[s.theme] || ['light', 'blue'];
+      if (!MODES.includes(mode)) mode = lm;
+      if (!ACCENTS.includes(accent)) accent = la;
+    }
+    return { mode, accent };
+  }
+
+  // 统一应用主题到根元素：data-mode + data-accent
+  function applyTheme(rootEl) {
+    const root = rootEl || document.documentElement;
+    const prefs = getThemePrefs();
+    root.setAttribute('data-mode', prefs.mode);
+    root.setAttribute('data-accent', prefs.accent);
+    return prefs;
+  }
+
   // ---------- 文件 ----------
   function getRecentFiles() {
     try {
@@ -116,6 +150,10 @@ const JmindStorage = (function () {
     getSettings,
     saveSettings,
     updateSetting,
+    getThemePrefs,
+    applyTheme,
+    MODES,
+    ACCENTS,
     getRecentFiles,
     getFile,
     saveFile,

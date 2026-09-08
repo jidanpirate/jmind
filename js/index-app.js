@@ -11,13 +11,8 @@
   const btnImport = document.getElementById('btn-import');
   const fileInput = document.getElementById('file-input');
 
-  // 应用主题
-  function applyTheme() {
-    const settings = JmindStorage.getSettings();
-    const theme = settings.theme || 'default';
-    document.documentElement.setAttribute('data-theme', theme);
-  }
-  applyTheme();
+  // 应用主题（外观模式 × 主题色）
+  JmindStorage.applyTheme();
 
   // 加载最近文件
   function loadRecentFiles() {

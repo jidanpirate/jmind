@@ -5,32 +5,41 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = '1.1.0';
+  const APP_VERSION = '1.2.0';
 
-  // 应用当前主题
+  // 应用当前主题（外观模式 × 主题色）
   function applyTheme() {
-    const settings = JmindStorage.getSettings();
-    const theme = settings.theme || 'default';
-    document.documentElement.setAttribute('data-theme', theme);
+    JmindStorage.applyTheme();
   }
   applyTheme();
 
   // 渲染选中状态
   function renderSelected() {
-    const settings = JmindStorage.getSettings();
-    document.querySelectorAll('.theme-option').forEach(el => {
-      el.classList.toggle('selected', settings.theme === el.dataset.theme);
+    const { mode, accent } = JmindStorage.getThemePrefs();
+    document.querySelectorAll('.mode-option').forEach(el => {
+      el.classList.toggle('selected', mode === el.dataset.mode);
+    });
+    document.querySelectorAll('.accent-swatch').forEach(el => {
+      el.classList.toggle('selected', accent === el.dataset.accent);
     });
     document.querySelectorAll('.language-option').forEach(el => {
-      el.classList.toggle('selected', (settings.language || 'zh') === el.dataset.lang);
+      el.classList.toggle('selected', (JmindStorage.getSettings().language || 'zh') === el.dataset.lang);
     });
   }
 
-  // 主题选择
-  document.querySelectorAll('.theme-option').forEach(el => {
+  // 外观模式选择（浅色/深色）
+  document.querySelectorAll('.mode-option').forEach(el => {
     el.addEventListener('click', () => {
-      const theme = el.dataset.theme;
-      JmindStorage.updateSetting('theme', theme);
+      JmindStorage.updateSetting('mode', el.dataset.mode);
+      applyTheme();
+      renderSelected();
+    });
+  });
+
+  // 主题色选择
+  document.querySelectorAll('.accent-swatch').forEach(el => {
+    el.addEventListener('click', () => {
+      JmindStorage.updateSetting('accent', el.dataset.accent);
       applyTheme();
       renderSelected();
     });
