@@ -294,3 +294,131 @@ body { overflow: hidden; height: 100vh; width: 100vw; user-select: none; -webkit
 }
 
 .status-left, .status-right { display: flex; align-items: center; gap: 12px; }
+
+/* ============================================================
+   动画 & 浮动快捷菜单
+   ============================================================ */
+
+/* ---------- 节点浮动快捷菜单 ---------- */
+.node-popup {
+  position: absolute;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 4px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15), 0 0 0 1px var(--border);
+  opacity: 0;
+  transform: scale(0.8) translateY(6px);
+  transform-origin: top center;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, opacity;
+}
+
+.node-popup.active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+.node-popup.popup-above { transform-origin: bottom center; }
+.node-popup.popup-above.active { transform: scale(1) translateY(0); }
+.node-popup.popup-above { transform: scale(0.8) translateY(-6px); }
+
+.popup-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.12s, color 0.12s, transform 0.12s;
+}
+
+.popup-btn svg { width: 16px; height: 16px; }
+
+.popup-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.popup-btn:active { transform: scale(0.9); }
+
+.popup-btn.danger:hover { background: var(--danger); color: #fff; }
+.popup-btn.hidden-btn { display: none; }
+
+.popup-divider { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+
+/* ---------- 节点编辑器弹入动画 ---------- */
+.node-editor {
+  animation: editorIn 0.14s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes editorIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ---------- 工具栏按钮交互增强 ---------- */
+.toolbar button {
+  transition: background var(--transition), color var(--transition), transform 0.12s, box-shadow 0.2s;
+}
+
+.toolbar button:not(.primary):hover {
+  transform: translateY(-1px);
+}
+
+.toolbar button:active { transform: scale(0.94); }
+
+.toolbar button.primary {
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.toolbar button.primary:hover {
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 45%, transparent);
+  transform: translateY(-1px);
+}
+
+/* ---------- 搜索栏滑入 ---------- */
+.search-bar {
+  animation: searchSlide 0.2s ease;
+}
+
+@keyframes searchSlide {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ---------- 右键菜单增强 ---------- */
+.context-menu .menu-item { transition: background 0.1s, padding-left 0.15s; }
+.context-menu .menu-item:hover { padding-left: 20px; }
+
+/* ---------- Toast 弹入增强 ---------- */
+.toast {
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ---------- 保存状态点呼吸 ---------- */
+.save-status.dirty .dot { animation: dotPulse 1.2s ease infinite; }
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+/* ---------- 画布淡入 ---------- */
+.canvas-container { animation: canvasFade 0.4s ease; }
+
+@keyframes canvasFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
