@@ -5,7 +5,8 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.3.0';
+  const L = JmindI18n.t;
 
   // 应用当前主题（外观模式 × 主题色）
   function applyTheme() {
@@ -45,18 +46,14 @@
     });
   });
 
-  // 语言选择
+  // 语言选择（即时生效）
   document.querySelectorAll('.language-option').forEach(el => {
     el.addEventListener('click', () => {
       const lang = el.dataset.lang;
       JmindStorage.updateSetting('language', lang);
+      JmindI18n.apply();
       renderSelected();
-      // 语言切换提示（当前为即时生效预留）
-      if (lang === 'en') {
-        showToast('Language set to English (UI localization coming soon)', 'info');
-      } else {
-        showToast('语言已设置为中文', 'success');
-      }
+      showToast(L(lang === 'en' ? 'lang_en' : 'lang_zh'), 'success');
     });
   });
 
@@ -67,9 +64,9 @@
 
   // 清除所有数据
   document.getElementById('btn-clear-data').addEventListener('click', () => {
-    if (confirm('确定清除所有数据吗？此操作将删除所有思维导图和设置，且不可撤销。')) {
+    if (confirm(L('confirm_clear_all'))) {
       JmindStorage.clearAll();
-      alert('所有数据已清除');
+      alert(L('data_cleared'));
       window.location.href = 'index.html';
     }
   });
@@ -89,7 +86,7 @@
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast('数据导出成功', 'success');
+      showToast(L('export_success'), 'success');
     });
   }
 

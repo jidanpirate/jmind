@@ -17,6 +17,8 @@ const JmindCore = (function () {
   function generateColor(depth, side, index) { if (depth === 0) return ROOT_COLOR; return COLOR_PALETTE[(depth - 1 + index) % COLOR_PALETTE.length]; }
   function getPalette() { return [...COLOR_PALETTE]; }
   function getRootColor() { return ROOT_COLOR; }
+  // 多语言默认文本（i18n 未加载时回退中文）
+  function tr(key) { return (typeof JmindI18n !== 'undefined' && JmindI18n.t) ? JmindI18n.t(key) : key; }
 
   function getNodeById(id, node = mindMap, parent = null) {
     if (!node) return null;
@@ -47,7 +49,7 @@ const JmindCore = (function () {
     function walk(node) { if (!node) return; if (node.text && node.text.toLowerCase().includes(lower)) results.push(node.id); if (node.children) node.children.forEach(walk); }
     walk(mindMap); return results;
   }
-  function fixNode(node) { if (!node.id) node.id = generateId(); if (!node.text) node.text = '节点'; if (!node.color) node.color = '#5B9BD5'; if (!node.children) node.children = []; node.children.forEach(fixNode); return node; }
+  function fixNode(node) { if (!node.id) node.id = generateId(); if (!node.text) node.text = tr('default_node'); if (!node.color) node.color = '#5B9BD5'; if (!node.children) node.children = []; node.children.forEach(fixNode); return node; }
 
   function createSampleMindMap() {
     nodeIdCounter = 0;
@@ -93,7 +95,7 @@ const JmindCore = (function () {
     const parent = result.node; const depth = getNodeDepth(parentId) + 1; const side = getNodeSide(parentId);
     const siblingCount = parent.children ? parent.children.length : 0;
     const newId = generateId();
-    const newNode = { id: newId, text: '新节点', color: generateColor(depth, side, siblingCount), collapsed: false, children: [] };
+    const newNode = { id: newId, text: tr('new_node'), color: generateColor(depth, side, siblingCount), collapsed: false, children: [] };
     if (!parent.children) parent.children = []; parent.children.push(newNode);
     if (collapsedNodes.has(parentId)) { collapsedNodes.delete(parentId); parent.collapsed = false; }
     pushHistory(); return newId;
@@ -104,7 +106,7 @@ const JmindCore = (function () {
     const index = getNodeIndex(nodeId, parent); if (index < 0) return null;
     const depth = getNodeDepth(nodeId); const side = getNodeSide(nodeId);
     const newId = generateId();
-    const newNode = { id: newId, text: '新节点', color: generateColor(depth, side, index + 1), collapsed: false, children: [] };
+    const newNode = { id: newId, text: tr('new_node'), color: generateColor(depth, side, index + 1), collapsed: false, children: [] };
     parent.children.splice(index + 1, 0, newNode); pushHistory(); return newId;
   }
   function deleteNode(nodeId) {
@@ -165,7 +167,7 @@ const JmindCore = (function () {
     const index = getNodeIndex(nodeId, parent); const result = getNodeById(nodeId); if (!result) return null;
     const newNode = JSON.parse(JSON.stringify(result.node));
     function regenerateIds(node) { node.id = generateId(); if (node.children) node.children.forEach(regenerateIds); }
-    regenerateIds(newNode); newNode.text = newNode.text + ' 副本';
+    regenerateIds(newNode); newNode.text = newNode.text + tr('duplicate_suffix');
     parent.children.splice(index + 1, 0, newNode); pushHistory(); return newNode.id;
   }
   function hasClipboard() { return clipboard !== null; }

@@ -21,6 +21,11 @@
   const searchNextBtn = document.getElementById('search-next');
   const searchClose = document.getElementById('search-close');
   const nodePopup = document.getElementById('node-popup');
+  const outlinePanel = document.getElementById('outline-panel');
+  const outlineBtn = document.getElementById('btn-outline');
+
+  // 翻译函数
+  const L = JmindI18n.t;
 
   // ---------- 状态 ----------
   let currentFileId = null;
@@ -38,6 +43,7 @@
   const DRAG_THRESHOLD = 8;
   let searchResultIds = [];
   let searchIndex = -1;
+  let outlineMode = false;
 
   // ---------- 初始化模块 ----------
   const ctx = JmindRenderer.init(canvas, container);
@@ -45,6 +51,14 @@
 
   // ---------- 主题应用（外观模式 × 主题色） ----------
   JmindStorage.applyTheme();
+  JmindI18n.apply();
+
+  // ---------- 大纲视图初始化 ----------
+  if (outlinePanel) {
+    JmindOutline.init(outlinePanel, {
+      onChange: () => { markDirty(); refreshView(); }
+    });
+  }
 
   // ---------- Toast ----------
   let toastTimer = null;
@@ -75,13 +89,13 @@
     saveStatusEl.className = 'save-status ' + (isDirty ? 'dirty' : 'saved');
     const dot = saveStatusEl.querySelector('.dot');
     const text = saveStatusEl.querySelector('.text');
-    if (text) text.textContent = isDirty ? '未保存' : '已保存';
+    if (text) text.textContent = isDirty ? L('unsaved') : L('saved');
   }
 
   function updateTitle() {
     const mindMap = JmindCore.getMindMap();
-    const name = mindMap?.text || '未命名';
-    document.title = (isDirty ? '● ' : '') + name + ' - jmind 编辑器';
+    const name = mindMap?.text || L('untitled');
+    document.title = (isDirty ? '● ' : '') + name + L('title_suffix');
   }
 
   function scheduleAutoSave() {
@@ -94,42 +108,42 @@
   // ---------- 文件操作 ----------
   function saveToLocalStorage(silent = false) {
     const mindMap = JmindCore.getMindMap();
-    if (!mindMap) { showToast('没有内容可保存', 'error'); return; }
+    if (!mindMap) { showToast(L('toast_save_empty'), 'error'); return; }
     const data = JmindCore.toExportData();
     if (!currentFileId || currentFileId === 'new') {
       currentFileId = JmindStorage.createFileId();
     }
     JmindStorage.saveFile(currentFileId, data);
     markClean();
-    if (!silent) showToast('保存成功', 'success');
+    if (!silent) showToast(L('toast_save_success'), 'success');
   }
 
   function exportToJmind() {
     const mindMap = JmindCore.getMindMap();
-    if (!mindMap) { showToast('没有可导出的内容', 'error'); return; }
+    if (!mindMap) { showToast(L('toast_export_empty'), 'error'); return; }
     const data = JmindCore.toExportData();
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = (mindMap.text || '思维导图') + '.json';
+    a.download = (mindMap.text || L('untitled')) + '.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('导出成功', 'success');
+    showToast(L('toast_export_success'), 'success');
   }
 
   function exportPNG() {
     const mindMap = JmindCore.getMindMap();
-    if (!mindMap) { showToast('没有可导出的内容', 'error'); return; }
+    if (!mindMap) { showToast(L('toast_export_empty'), 'error'); return; }
     const positions = JmindLayout.getPositions();
     const collapsed = JmindCore.getCollapsedSet();
-    const filename = (mindMap.text || '思维导图') + '.png';
+    const filename = (mindMap.text || L('untitled')) + '.png';
     const ok = JmindRenderer.exportPNG(positions, collapsed, filename);
-    if (ok) showToast('PNG 导出成功', 'success');
-    else showToast('导出失败', 'error');
+    if (ok) showToast(L('toast_png_success'), 'success');
+    else showToast(L('toast_png_fail'), 'error');
   }
 
   function loadFile() {
@@ -157,8 +171,28 @@
     const collapsed = JmindCore.getCollapsedSet();
     JmindLayout.layoutTree(mindMap, collapsed);
     JmindRenderer.render(JmindLayout.getPositions(), collapsed);
+    if (outlineMode && outlinePanel) {
+      JmindOutline.render(JmindRenderer.getSelected());
+    }
     updateStats();
     updateNodePopup();
+  }
+
+  // ---------- 大纲视图切换 ----------
+  function toggleOutlineMode() {
+    if (editingNodeId) stopEditing(true);
+    if (JmindOutline.isEditing()) JmindOutline.stopEdit(true);
+    outlineMode = !outlineMode;
+    container.classList.toggle('outline-mode', outlineMode);
+    if (outlineBtn) outlineBtn.classList.toggle('active', outlineMode);
+    if (outlineMode) {
+      JmindRenderer.setHovered(null);
+      hideNodePopup();
+      JmindOutline.render(JmindRenderer.getSelected());
+      JmindOutline.reveal(JmindRenderer.getSelected());
+    } else {
+      refreshView();
+    }
   }
 
   // ---------- 节点浮动快捷菜单 ----------
@@ -214,11 +248,16 @@
     const total = JmindCore.countNodes();
     const visible = JmindCore.countVisibleNodes();
     const scale = JmindRenderer.getScale();
-    statsEl.textContent = `节点: ${total} (可见 ${visible}) | 缩放: ${Math.round(scale * 100)}%`;
+    statsEl.textContent = L('stats_nodes', { total, visible }) + ' | ' + L('stats_zoom', { scale: Math.round(scale * 100) });
   }
 
   // ---------- 节点编辑 ----------
   function startEditing(nodeId) {
+    // 大纲模式下使用大纲行内编辑
+    if (outlineMode) {
+      JmindOutline.startEdit(nodeId);
+      return;
+    }
     const pos = JmindRenderer.getNodeScreenRect(nodeId, JmindLayout.getPositions());
     if (!pos) return;
     const node = JmindCore.getNodeById(nodeId)?.node;
@@ -241,7 +280,7 @@
 
     const onFinish = (save) => {
       if (save && editorInput) {
-        const newText = editorInput.value.trim() || '新节点';
+        const newText = editorInput.value.trim() || L('new_node');
         if (newText !== node.text) {
           JmindCore.updateNodeText(nodeId, newText);
           refreshView();
@@ -298,7 +337,7 @@
 
   function doAddSibling(nodeId) {
     if (nodeId === JmindCore.getMindMap()?.id) {
-      showToast('根节点不能添加兄弟节点', 'error');
+      showToast(L('toast_root_no_sibling'), 'error');
       return null;
     }
     const id = JmindCore.addSiblingNode(nodeId);
@@ -314,7 +353,7 @@
 
   function doDelete(nodeId) {
     if (nodeId === JmindCore.getMindMap()?.id) {
-      showToast('根节点不能删除', 'error');
+      showToast(L('toast_root_no_delete'), 'error');
       return false;
     }
     const ok = JmindCore.deleteNode(nodeId);
@@ -345,9 +384,9 @@
     if (JmindCore.undo()) {
       refreshView();
       markDirty();
-      showToast('已撤销', 'info');
+      showToast(L('toast_undo'), 'info');
     } else {
-      showToast('没有可撤销的操作', 'warning');
+      showToast(L('toast_no_undo'), 'warning');
     }
   }
 
@@ -355,31 +394,31 @@
     if (JmindCore.redo()) {
       refreshView();
       markDirty();
-      showToast('已重做', 'info');
+      showToast(L('toast_redo'), 'info');
     } else {
-      showToast('没有可重做的操作', 'warning');
+      showToast(L('toast_no_redo'), 'warning');
     }
   }
 
   function doCopy() {
     const selected = JmindRenderer.getSelected();
     if (selected && JmindCore.copyNode(selected)) {
-      showToast('已复制节点', 'success');
+      showToast(L('toast_copied'), 'success');
     }
   }
 
   function doPaste() {
     const selected = JmindRenderer.getSelected();
-    if (!selected) { showToast('请先选择目标节点', 'warning'); return; }
+    if (!selected) { showToast(L('toast_pick_target'), 'warning'); return; }
     const id = JmindCore.pasteNode(selected);
     if (id) {
       JmindRenderer.setSelected(id);
       refreshView();
       JmindRenderer.triggerAppear(id);
       markDirty();
-      showToast('已粘贴', 'success');
+      showToast(L('toast_pasted'), 'success');
     } else {
-      showToast('剪贴板为空', 'warning');
+      showToast(L('toast_clipboard_empty'), 'warning');
     }
   }
 
@@ -392,9 +431,9 @@
       refreshView();
       JmindRenderer.triggerAppear(id);
       markDirty();
-      showToast('已复制节点', 'success');
+      showToast(L('toast_copied'), 'success');
     } else {
-      showToast('根节点不能复制', 'warning');
+      showToast(L('toast_root_no_duplicate'), 'warning');
     }
   }
 
@@ -407,7 +446,7 @@
     JmindRenderer.fitToView(JmindLayout.getPositions());
     refreshView();
     markDirty();
-    showToast('已清空，保留中心主题', 'success');
+    showToast(L('toast_cleared'), 'success');
   }
 
   // ---------- 搜索 ----------
@@ -442,7 +481,7 @@
 
   function updateSearchUI() {
     if (searchResultIds.length === 0) {
-      searchCount.textContent = searchInput.value ? '无结果' : '';
+      searchCount.textContent = searchInput.value ? L('search_empty') : '';
     } else {
       searchCount.textContent = `${searchIndex + 1} / ${searchResultIds.length}`;
     }
@@ -454,7 +493,11 @@
     if (searchIndex < 0 || searchIndex >= searchResultIds.length) return;
     const id = searchResultIds[searchIndex];
     JmindRenderer.setSelected(id);
-    JmindRenderer.centerOnNode(id, JmindLayout.getPositions());
+    if (outlineMode) {
+      JmindOutline.reveal(id);
+    } else {
+      JmindRenderer.centerOnNode(id, JmindLayout.getPositions());
+    }
     refreshView();
   }
 
@@ -697,6 +740,7 @@
     const selected = JmindRenderer.getSelected();
     const mindMap = JmindCore.getMindMap();
 
+    if (ctrl && e.shiftKey && (key === 'O' || key === 'o')) { e.preventDefault(); toggleOutlineMode(); return; }
     if (ctrl && key === 's') { e.preventDefault(); saveToLocalStorage(); return; }
     if (ctrl && key === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); return; }
     if (ctrl && (key === 'y' || (key === 'z' && e.shiftKey))) { e.preventDefault(); doRedo(); return; }
@@ -704,6 +748,13 @@
     if (ctrl && key === 'c') { e.preventDefault(); doCopy(); return; }
     if (ctrl && key === 'v') { e.preventDefault(); doPaste(); return; }
     if (ctrl && key === 'd') { e.preventDefault(); doDuplicate(); return; }
+
+    // 大纲模式方向键导航
+    if (outlineMode && (key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight')) {
+      e.preventDefault();
+      JmindOutline.navigate(key);
+      return;
+    }
 
     if (key === 'Tab') {
       e.preventDefault();
@@ -867,12 +918,12 @@
       const selected = JmindRenderer.getSelected();
       const root = JmindCore.getMindMap();
       if (selected && selected !== root?.id) doAddSibling(selected);
-      else showToast('请先选择一个非根节点', 'error');
+      else showToast(L('toast_pick_nonroot'), 'error');
     });
     document.getElementById('btn-edit').addEventListener('click', () => {
       const selected = JmindRenderer.getSelected();
       if (selected) startEditing(selected);
-      else showToast('请先选择一个节点', 'warning');
+      else showToast(L('toast_pick_node'), 'warning');
     });
     document.getElementById('btn-delete').addEventListener('click', () => {
       const selected = JmindRenderer.getSelected();
@@ -883,6 +934,7 @@
       if (selected) doToggleCollapse(selected);
     });
     document.getElementById('btn-search').addEventListener('click', openSearch);
+    if (outlineBtn) outlineBtn.addEventListener('click', toggleOutlineMode);
     document.getElementById('btn-zoom-in').addEventListener('click', () => {
       JmindRenderer.zoomCenter(1.15);
       refreshView();
@@ -958,6 +1010,25 @@
     canvas.addEventListener('dblclick', onDoubleClick);
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('contextmenu', onContextMenu);
+
+    // 大纲面板右键菜单
+    if (outlinePanel) {
+      outlinePanel.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const item = e.target.closest('.outline-item');
+        if (!item) return;
+        const nodeId = item.dataset.id;
+        JmindRenderer.setSelected(nodeId);
+        JmindOutline.render(nodeId);
+        contextMenu.classList.add('active');
+        contextMenu.style.left = e.clientX + 'px';
+        contextMenu.style.top = e.clientY + 'px';
+        if (colorPicker) colorPicker.classList.remove('active');
+        const mr = contextMenu.getBoundingClientRect();
+        if (mr.right > window.innerWidth) contextMenu.style.left = (e.clientX - mr.width) + 'px';
+        if (mr.bottom > window.innerHeight) contextMenu.style.top = (e.clientY - mr.height) + 'px';
+      });
+    }
 
     // 全局
     document.addEventListener('mousedown', (e) => {

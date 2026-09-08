@@ -10,22 +10,24 @@
   const btnNew = document.getElementById('btn-new');
   const btnImport = document.getElementById('btn-import');
   const fileInput = document.getElementById('file-input');
+  const L = JmindI18n.t;
 
   // 应用主题（外观模式 × 主题色）
   JmindStorage.applyTheme();
+  JmindI18n.apply();
 
   // 加载最近文件
   function loadRecentFiles() {
     const files = JmindStorage.getRecentFiles();
     if (fileCountEl) {
-      fileCountEl.textContent = files.length + ' 个文件';
+      fileCountEl.textContent = L('files_count', { n: files.length });
     }
     if (files.length === 0) {
       fileListEl.innerHTML = `
         <div class="empty">
           <div class="empty-icon">🗺️</div>
-          <div class="empty-text">暂无文件，点击上方"新建导图"开始</div>
-          <button class="btn" id="empty-new">新建导图</button>
+          <div class="empty-text">${L('empty_text')}</div>
+          <button class="btn" id="empty-new">${L('new_map')}</button>
         </div>`;
       document.getElementById('empty-new')?.addEventListener('click', createNewFile);
       return;
@@ -34,15 +36,15 @@
     files.forEach(file => {
       const item = document.createElement('div');
       item.className = 'file-item';
-      const nodeCount = file.nodeCount ? ` · ${file.nodeCount} 节点` : '';
+      const nodeCount = file.nodeCount ? ` · ${file.nodeCount}${L('nodes_suffix')}` : '';
       item.innerHTML = `
         <div class="file-info">
-          <div class="file-name">${escapeHtml(file.name || '未命名')}</div>
+          <div class="file-name">${escapeHtml(file.name || L('untitled'))}</div>
           <div class="file-meta">${formatDate(file.modifiedAt)}${nodeCount}</div>
         </div>
         <div class="file-actions">
-          <button class="icon-btn" data-action="open" title="打开">📂</button>
-          <button class="icon-btn danger" data-action="delete" title="删除">🗑️</button>
+          <button class="icon-btn" data-action="open" title="${L('open')}">📂</button>
+          <button class="icon-btn danger" data-action="delete" title="${L('delete')}">🗑️</button>
         </div>`;
       item.addEventListener('click', (e) => {
         const action = e.target.closest('[data-action]')?.dataset.action;
@@ -68,15 +70,15 @@
     const d = new Date(timestamp);
     const now = new Date();
     const diff = now - d;
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
-    if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前';
-    if (diff < 604800000) return Math.floor(diff / 86400000) + ' 天前';
+    if (diff < 60000) return L('just_now');
+    if (diff < 3600000) return L('minutes_ago', { n: Math.floor(diff / 60000) });
+    if (diff < 86400000) return L('hours_ago', { n: Math.floor(diff / 3600000) });
+    if (diff < 604800000) return L('days_ago', { n: Math.floor(diff / 86400000) });
     return d.toLocaleDateString('zh-CN');
   }
 
   function deleteFile(id) {
-    if (!confirm('确定删除此文件吗？此操作不可撤销。')) return;
+    if (!confirm(L('confirm_delete_file'))) return;
     JmindStorage.deleteFile(id);
     loadRecentFiles();
   }
@@ -96,16 +98,16 @@
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        if (!data.root) throw new Error('无效文件：缺少 root 节点');
+        if (!data.root) throw new Error(L('invalid_file'));
         const id = JmindStorage.createFileId();
         JmindStorage.saveFile(id, data);
         JmindStorage.setEditId(id);
         window.location.href = 'editor.html';
       } catch (err) {
-        alert('导入失败: ' + err.message);
+        alert(L('import_failed') + ': ' + err.message);
       }
     };
-    reader.onerror = () => alert('文件读取失败');
+    reader.onerror = () => alert(L('read_failed'));
     reader.readAsText(file);
   }
 
