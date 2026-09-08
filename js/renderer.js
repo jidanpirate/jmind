@@ -1,6 +1,6 @@
 /**
  * jmind - Renderer Module
- * Canvas 渲染器：绘制节点、连线、选中态、搜索高亮、导出PNG、动画
+ * Canvas 渲染器：绘制节点、连线、选中态、搜索高亮、导出PNG
  */
 const JmindRenderer = (function () {
   // ---------- 常量 ----------
@@ -19,6 +19,20 @@ const JmindRenderer = (function () {
   let searchResults = [];
   let currentSearchIndex = -1;
   let isDragging = false;
+
+  // 主题强调色（跟随 CSS 变量 --accent-rgb）
+  let accentRGB = { r: 10, g: 132, b: 255 };
+  function refreshAccent() {
+    if (typeof getComputedStyle !== 'function') return;
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim();
+    const parts = v.split(',').map(s => parseInt(s.trim(), 10));
+    if (parts.length === 3 && parts.every(n => !Number.isNaN(n))) {
+      accentRGB = { r: parts[0], g: parts[1], b: parts[2] };
+    }
+  }
+  function accentRgba(alpha) {
+    return `rgba(${accentRGB.r},${accentRGB.g},${accentRGB.b},${alpha})`;
+  }
 
   // ---------- 动画状态 ----------
   let animFrameId = null;
@@ -70,7 +84,7 @@ const JmindRenderer = (function () {
   function init(canvasEl, containerEl) {
     canvas = canvasEl;
     container = containerEl;
-    ctx = canvasEl.getContext('2d');
+    ctx = canvas.getContext('2d');
     return ctx;
   }
 
@@ -246,12 +260,12 @@ const JmindRenderer = (function () {
       }
     }
 
-    // 选中脉冲光环（外圈呼吸光）
+    // 选中脉冲光环（外圈呼吸光，颜色跟随主题强调色）
     if (isSelected) {
       const pulseT = (now - selectedPulseStart) / 1000;
       const pulse = (Math.sin(pulseT * 3.2) + 1) / 2; // 0..1
       const glowR = (NODE_RADIUS + 3) * scale + pulse * 3 * scale;
-      ctx.strokeStyle = `rgba(10,132,255,${0.18 + pulse * 0.22})`;
+      ctx.strokeStyle = accentRgba(0.18 + pulse * 0.22);
       ctx.lineWidth = (3 + pulse * 3) * scale;
       ctx.beginPath();
       roundRect(ctx, x - 3 - pulse * 2, y - 3 - pulse * 2, w + 6 + pulse * 4, h + 6 + pulse * 4, glowR);
@@ -283,7 +297,7 @@ const JmindRenderer = (function () {
       ctx.beginPath();
       roundRect(ctx, x + 1, y + 1, w - 2, h - 2, NODE_RADIUS * scale);
       ctx.stroke();
-      ctx.strokeStyle = 'rgba(74,144,217,0.55)';
+      ctx.strokeStyle = accentRgba(0.55);
       ctx.lineWidth = 2 * scale;
       ctx.beginPath();
       roundRect(ctx, x - 1, y - 1, w + 2, h + 2, (NODE_RADIUS + 1) * scale);
@@ -343,6 +357,7 @@ const JmindRenderer = (function () {
 
   // ---------- 主渲染 ----------
   function render(nodePositions, collapsedSet) {
+    refreshAccent();
     lastPositions = nodePositions;
     lastCollapsed = collapsedSet;
     drawFrame(nodePositions, collapsedSet);

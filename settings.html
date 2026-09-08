@@ -16,15 +16,36 @@
             <h1>⚙️ 设置</h1>
         </div>
 
-        <!-- 主题 -->
+        <!-- 外观模式：浅色 / 深色 -->
         <div class="setting-group">
-            <label>主题颜色</label>
-            <div class="theme-options" id="theme-options">
-                <div class="theme-option" data-theme="default" title="默认（浅色）">浅色</div>
-                <div class="theme-option" data-theme="dark" title="深色模式">深色</div>
-                <div class="theme-option" data-theme="green" title="绿色主题">绿色</div>
-                <div class="theme-option" data-theme="pink" title="粉色主题">粉色</div>
-                <div class="theme-option" data-theme="blue" title="蓝色主题">蓝色</div>
+            <label>
+                外观模式
+                <div class="setting-desc">选择浅色或深色界面，可与下方主题色自由搭配</div>
+            </label>
+            <div class="mode-options" id="mode-options">
+                <div class="mode-option" data-mode="light">
+                    <span class="mode-icon">☀️</span>
+                    <span class="mode-name">浅色</span>
+                </div>
+                <div class="mode-option" data-mode="dark">
+                    <span class="mode-icon">🌙</span>
+                    <span class="mode-name">深色</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主题色 -->
+        <div class="setting-group">
+            <label>
+                主题色
+                <div class="setting-desc">选择界面的强调颜色</div>
+            </label>
+            <div class="accent-options" id="accent-options">
+                <div class="accent-swatch" data-accent="blue"   style="--sw:#0A84FF" title="蓝色"></div>
+                <div class="accent-swatch" data-accent="green"  style="--sw:#16a34a" title="绿色"></div>
+                <div class="accent-swatch" data-accent="pink"   style="--sw:#ec4899" title="粉色"></div>
+                <div class="accent-swatch" data-accent="purple" style="--sw:#8b5cf6" title="紫色"></div>
+                <div class="accent-swatch" data-accent="orange" style="--sw:#f97316" title="橙色"></div>
             </div>
         </div>
 
