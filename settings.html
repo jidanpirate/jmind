@@ -8,28 +8,28 @@
     <link rel="stylesheet" href="css/settings.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230A84FF'/><text x='50' y='68' font-size='55' font-weight='bold' fill='white' text-anchor='middle' font-family='sans-serif'>J</text></svg>">
 </head>
-<body>
+<body data-i18n-doc-title="settings_doc_title">
     <div class="settings-container">
-        <a href="index.html" class="back-link">← 返回首页</a>
+        <a href="index.html" class="back-link" data-i18n="back">← 返回首页</a>
 
         <div class="settings-header">
-            <h1>⚙️ 设置</h1>
+            <h1><span data-i18n="settings_title">⚙️ 设置</span></h1>
         </div>
 
         <!-- 外观模式：浅色 / 深色 -->
         <div class="setting-group">
             <label>
-                外观模式
-                <div class="setting-desc">选择浅色或深色界面，可与下方主题色自由搭配</div>
+                <span data-i18n="appearance">外观模式</span>
+                <div class="setting-desc" data-i18n="appearance_desc">选择浅色或深色界面，可与下方主题色自由搭配</div>
             </label>
             <div class="mode-options" id="mode-options">
                 <div class="mode-option" data-mode="light">
                     <span class="mode-icon">☀️</span>
-                    <span class="mode-name">浅色</span>
+                    <span class="mode-name" data-i18n="light">浅色</span>
                 </div>
                 <div class="mode-option" data-mode="dark">
                     <span class="mode-icon">🌙</span>
-                    <span class="mode-name">深色</span>
+                    <span class="mode-name" data-i18n="dark">深色</span>
                 </div>
             </div>
         </div>
@@ -37,15 +37,15 @@
         <!-- 主题色 -->
         <div class="setting-group">
             <label>
-                主题色
-                <div class="setting-desc">选择界面的强调颜色</div>
+                <span data-i18n="accent">主题色</span>
+                <div class="setting-desc" data-i18n="accent_desc">选择界面的强调颜色</div>
             </label>
             <div class="accent-options" id="accent-options">
-                <div class="accent-swatch" data-accent="blue"   style="--sw:#0A84FF" title="蓝色"></div>
-                <div class="accent-swatch" data-accent="green"  style="--sw:#16a34a" title="绿色"></div>
-                <div class="accent-swatch" data-accent="pink"   style="--sw:#ec4899" title="粉色"></div>
-                <div class="accent-swatch" data-accent="purple" style="--sw:#8b5cf6" title="紫色"></div>
-                <div class="accent-swatch" data-accent="orange" style="--sw:#f97316" title="橙色"></div>
+                <div class="accent-swatch" data-accent="blue"   style="--sw:#0A84FF" data-i18n-title="accent"></div>
+                <div class="accent-swatch" data-accent="green"  style="--sw:#16a34a" data-i18n-title="accent"></div>
+                <div class="accent-swatch" data-accent="pink"   style="--sw:#ec4899" data-i18n-title="accent"></div>
+                <div class="accent-swatch" data-accent="purple" style="--sw:#8b5cf6" data-i18n-title="accent"></div>
+                <div class="accent-swatch" data-accent="orange" style="--sw:#f97316" data-i18n-title="accent"></div>
             </div>
         </div>
 
@@ -53,7 +53,7 @@
         <div class="setting-group">
             <label>
                 语言 / Language
-                <div class="setting-desc">界面语言设置（多语言支持开发中）</div>
+                <div class="setting-desc" data-i18n="language_desc">选择界面显示语言，立即生效</div>
             </label>
             <div class="language-options" id="language-options">
                 <div class="language-option" data-lang="zh">中文</div>
@@ -63,17 +63,17 @@
 
         <!-- 数据管理 -->
         <div class="data-section">
-            <h3>📦 数据管理</h3>
-            <p>所有数据均存储在你的浏览器本地（localStorage），不会上传到任何服务器。</p>
+            <h3 data-i18n="data_section">📦 数据管理</h3>
+            <p data-i18n="data_desc">所有数据均存储在你的浏览器本地（localStorage），不会上传到任何服务器。</p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                <button class="btn btn-ghost" id="btn-export-data">📤 导出备份</button>
-                <button class="btn btn-danger" id="btn-clear-data">🗑️ 清除所有数据</button>
+                <button class="btn btn-ghost" id="btn-export-data"><span data-i18n="export_backup">📤 导出备份</span></button>
+                <button class="btn btn-danger" id="btn-clear-data"><span data-i18n="clear_data">🗑️ 清除所有数据</span></button>
             </div>
         </div>
 
         <!-- 操作 -->
         <div class="actions">
-            <button class="btn" id="btn-save">完成</button>
+            <button class="btn" id="btn-save" data-i18n="done">完成</button>
         </div>
 
         <!-- 关于 -->
@@ -86,6 +86,7 @@
     <div class="toast" id="toast"></div>
 
     <script src="js/storage.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/settings-app.js"></script>
 </body>
 </html>

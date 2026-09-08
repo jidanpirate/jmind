@@ -12,39 +12,43 @@
     <div id="app">
         <!-- 工具栏 -->
         <div class="toolbar" id="toolbar">
-            <div class="logo" id="btn-back" title="返回首页">
+            <div class="logo" id="btn-back" data-i18n-title="back">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                 jmind
             </div>
             <div class="divider"></div>
-            <button id="btn-save" class="primary" title="保存 (Ctrl+S)">
+            <button id="btn-save" class="primary" data-i18n-title="save_title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                <span class="label">保存</span>
+                <span class="label" data-i18n="save">保存</span>
             </button>
-            <button id="btn-undo" title="撤销 (Ctrl+Z)">↶ <span class="label">撤销</span></button>
-            <button id="btn-redo" title="重做 (Ctrl+Y)">↷ <span class="label">重做</span></button>
+            <button id="btn-undo" data-i18n-title="undo_title">↶ <span class="label" data-i18n="undo">撤销</span></button>
+            <button id="btn-redo" data-i18n-title="redo_title">↷ <span class="label" data-i18n="redo">重做</span></button>
             <div class="divider"></div>
-            <button id="btn-add-child" title="添加子节点 (Tab)">＋ <span class="label">子节点</span></button>
-            <button id="btn-add-sibling" title="添加兄弟节点 (Enter)">↔ <span class="label">兄弟</span></button>
-            <button id="btn-edit" title="编辑节点文本 (F2)">✏️ <span class="label">编辑</span></button>
-            <button id="btn-delete" class="danger" title="删除节点 (Delete)">✕ <span class="label">删除</span></button>
+            <button id="btn-add-child" data-i18n-title="add_child_title">＋ <span class="label" data-i18n="add_child">子节点</span></button>
+            <button id="btn-add-sibling" data-i18n-title="add_sibling_title">↔ <span class="label" data-i18n="add_sibling">兄弟</span></button>
+            <button id="btn-edit" data-i18n-title="edit_title">✏️ <span class="label" data-i18n="edit">编辑</span></button>
+            <button id="btn-delete" class="danger" data-i18n-title="delete_title">✕ <span class="label" data-i18n="delete">删除</span></button>
             <div class="divider"></div>
-            <button id="btn-collapse" title="折叠/展开 (Space)">▾ <span class="label">折叠</span></button>
-            <button id="btn-search" title="搜索节点 (Ctrl+F)">🔍 <span class="label">搜索</span></button>
+            <button id="btn-collapse" data-i18n-title="collapse_title">▾ <span class="label" data-i18n="collapse">折叠</span></button>
+            <button id="btn-search" data-i18n-title="search_title">🔍 <span class="label" data-i18n="search">搜索</span></button>
+            <button id="btn-outline" data-i18n-title="outline_title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                <span class="label" data-i18n="outline">大纲</span>
+            </button>
             <div class="divider"></div>
             <button id="btn-zoom-in" title="放大 (+)">＋</button>
             <button id="btn-zoom-out" title="缩小 (-)">－</button>
             <button id="btn-fit" title="适应画布 (0)">⤢</button>
             <div class="divider"></div>
-            <button id="btn-export" title="导出为 JSON 文件">📄 <span class="label">导出</span></button>
-            <button id="btn-export-png" title="导出为 PNG 图片">🖼️ <span class="label">PNG</span></button>
+            <button id="btn-export" data-i18n-title="export_title">📄 <span class="label" data-i18n="export">导出</span></button>
+            <button id="btn-export-png" data-i18n-title="export_png_title">🖼️ <span class="label">PNG</span></button>
             <div class="spacer"></div>
             <div class="save-status" id="save-status">
                 <span class="dot"></span>
-                <span class="text">已保存</span>
+                <span class="text" data-i18n="saved">已保存</span>
             </div>
             <div class="divider"></div>
-            <button id="btn-clear" class="danger" title="清空子节点，保留中心主题">🗑️ <span class="label">清屏</span></button>
+            <button id="btn-clear" class="danger" data-i18n-title="clear_title">🗑️ <span class="label" data-i18n="clear">清屏</span></button>
         </div>
 
         <!-- 画布 -->
@@ -76,29 +80,32 @@
 
             <!-- 搜索栏 -->
             <div class="search-bar" id="search-bar">
-                <input type="text" id="search-input" placeholder="搜索节点..." autocomplete="off">
+                <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="搜索节点..." autocomplete="off">
                 <span class="search-count" id="search-count"></span>
                 <button class="search-nav-btn" id="search-prev" title="上一个 (Shift+Enter)">↑</button>
                 <button class="search-nav-btn" id="search-next" title="下一个 (Enter)">↓</button>
                 <button class="search-close" id="search-close" title="关闭 (Esc)">✕</button>
             </div>
+
+            <!-- 大纲视图 -->
+            <div class="outline-panel" id="outline-panel"></div>
         </div>
 
         <!-- 右键菜单 -->
         <div class="context-menu" id="context-menu">
-            <div class="menu-item" data-action="add-child">➕ 添加子节点</div>
-            <div class="menu-item" data-action="add-sibling">👥 添加兄弟节点</div>
+            <div class="menu-item" data-action="add-child">➕ <span data-i18n="menu_add_child">添加子节点</span></div>
+            <div class="menu-item" data-action="add-sibling">👥 <span data-i18n="menu_add_sibling">添加兄弟节点</span></div>
             <div class="menu-separator"></div>
-            <div class="menu-item" data-action="edit">✏️ 编辑文本</div>
-            <div class="menu-item" data-action="change-color">🎨 更改颜色</div>
+            <div class="menu-item" data-action="edit">✏️ <span data-i18n="menu_edit_text">编辑文本</span></div>
+            <div class="menu-item" data-action="change-color">🎨 <span data-i18n="menu_change_color">更改颜色</span></div>
             <div class="color-picker" id="color-picker"></div>
             <div class="menu-separator"></div>
-            <div class="menu-item" data-action="toggle-collapse">🔽 折叠/展开</div>
-            <div class="menu-item" data-action="copy">📋 复制节点</div>
-            <div class="menu-item" data-action="paste">📌 粘贴节点</div>
-            <div class="menu-item" data-action="duplicate">📄 复制为副本</div>
+            <div class="menu-item" data-action="toggle-collapse">🔽 <span data-i18n="menu_toggle_collapse">折叠/展开</span></div>
+            <div class="menu-item" data-action="copy">📋 <span data-i18n="menu_copy">复制节点</span></div>
+            <div class="menu-item" data-action="paste">📌 <span data-i18n="menu_paste">粘贴节点</span></div>
+            <div class="menu-item" data-action="duplicate">📄 <span data-i18n="menu_duplicate">复制为副本</span></div>
             <div class="menu-separator"></div>
-            <div class="menu-item danger" data-action="delete">🗑️ 删除节点</div>
+            <div class="menu-item danger" data-action="delete">🗑️ <span data-i18n="menu_delete">删除节点</span></div>
         </div>
 
         <!-- 拖拽指示 -->
@@ -113,21 +120,23 @@
                 <span id="stats">节点: 0 | 缩放: 100%</span>
             </div>
             <div class="status-right">
-                <kbd>Tab</kbd>子
-                <kbd>Enter</kbd>兄弟
-                <kbd>Del</kbd>删除
-                <kbd>F2</kbd>编辑
-                <kbd>Space</kbd>折叠
-                <kbd>Ctrl+Z</kbd>撤销
-                <kbd>Ctrl+F</kbd>搜索
+                <kbd>Tab</kbd><span data-i18n="kbd_child">子</span>
+                <kbd>Enter</kbd><span data-i18n="kbd_sibling">兄弟</span>
+                <kbd>Del</kbd><span data-i18n="kbd_delete">删除</span>
+                <kbd>F2</kbd><span data-i18n="kbd_edit">编辑</span>
+                <kbd>Space</kbd><span data-i18n="kbd_fold">折叠</span>
+                <kbd>Ctrl+Z</kbd><span data-i18n="kbd_undo">撤销</span>
+                <kbd>Ctrl+F</kbd><span data-i18n="kbd_search">搜索</span>
             </div>
         </div>
     </div>
 
     <script src="js/storage.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/mindmap.js"></script>
     <script src="js/layout.js"></script>
     <script src="js/renderer.js"></script>
+    <script src="js/outline.js"></script>
     <script src="js/editor-app.js"></script>
 </body>
 </html>
