@@ -422,3 +422,18 @@ body { overflow: hidden; height: 100vh; width: 100vw; user-select: none; -webkit
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* ---------- 工具栏 / 状态栏 入场 ---------- */
+.toolbar { animation: toolbarSlide 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes toolbarSlide {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.status-bar { animation: statusSlide 0.45s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes statusSlide {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
