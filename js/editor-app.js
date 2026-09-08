@@ -1,6 +1,6 @@
 /**
  * jmind - Editor Application
- * 编辑器主逻辑：事件处理、快捷键、工具栏、右键菜单、搜索、自动保存
+ * 编辑器主逻辑：事件处理、快捷键、工具栏、右键菜单、搜索、自动保存、浮动快捷菜单
  */
 (function () {
   'use strict';
@@ -20,6 +20,7 @@
   const searchPrevBtn = document.getElementById('search-prev');
   const searchNextBtn = document.getElementById('search-next');
   const searchClose = document.getElementById('search-close');
+  const nodePopup = document.getElementById('node-popup');
 
   // ---------- 状态 ----------
   let currentFileId = null;
@@ -162,6 +163,56 @@
     JmindLayout.layoutTree(mindMap, collapsed);
     JmindRenderer.render(JmindLayout.getPositions(), collapsed);
     updateStats();
+    updateNodePopup();
+  }
+
+  // ---------- 节点浮动快捷菜单 ----------
+  function hideNodePopup() {
+    nodePopup.classList.remove('active');
+  }
+
+  function updateNodePopup() {
+    const selectedId = JmindRenderer.getSelected();
+    // 编辑中、拖拽中、无选中时隐藏
+    if (!selectedId || editingNodeId || (dragMode === 'node' && isDragging)) {
+      hideNodePopup();
+      return;
+    }
+    const rect = JmindRenderer.getNodeScreenRect(selectedId, JmindLayout.getPositions());
+    if (!rect) { hideNodePopup(); return; }
+    const info = JmindCore.getNodeById(selectedId);
+    if (!info) { hideNodePopup(); return; }
+    const node = info.node;
+    const rootId = JmindCore.getMindMap()?.id;
+    const isRoot = selectedId === rootId;
+    const hasChildren = node.children && node.children.length > 0;
+
+    // 按钮可见性
+    nodePopup.querySelector('[data-popup-action="add-sibling"]').classList.toggle('hidden-btn', isRoot);
+    nodePopup.querySelector('[data-popup-action="delete"]').classList.toggle('hidden-btn', isRoot);
+    const collapseBtn = nodePopup.querySelector('[data-popup-action="toggle-collapse"]');
+    collapseBtn.classList.toggle('hidden-btn', !hasChildren);
+    // 折叠/展开箭头方向
+    collapseBtn.style.transform = node.collapsed ? 'rotate(180deg)' : '';
+
+    // 先显示以获取尺寸
+    nodePopup.classList.add('active');
+    const popupW = nodePopup.offsetWidth;
+    const popupH = nodePopup.offsetHeight;
+    const containerRect = container.getBoundingClientRect();
+
+    let left = rect.x + rect.width / 2 - popupW / 2;
+    // 水平方向不超出容器
+    left = Math.max(6, Math.min(left, containerRect.width - popupW - 6));
+
+    const gap = 8;
+    let top = rect.y + rect.height + gap;
+    const placeAbove = top + popupH > containerRect.height - 10;
+    if (placeAbove) top = rect.y - popupH - gap;
+    nodePopup.classList.toggle('popup-above', placeAbove);
+
+    nodePopup.style.left = left + 'px';
+    nodePopup.style.top = Math.max(6, top) + 'px';
   }
 
   function updateStats() {
@@ -178,6 +229,7 @@
     const node = JmindCore.getNodeById(nodeId)?.node;
     if (!node) return;
     editingNodeId = nodeId;
+    hideNodePopup();
     if (editorInput) editorInput.remove();
     editorInput = document.createElement('textarea');
     editorInput.className = 'node-editor';
@@ -242,6 +294,7 @@
     if (id) {
       JmindRenderer.setSelected(id);
       refreshView();
+      JmindRenderer.triggerAppear(id);
       markDirty();
       startEditing(id);
     }
@@ -257,6 +310,7 @@
     if (id) {
       JmindRenderer.setSelected(id);
       refreshView();
+      JmindRenderer.triggerAppear(id);
       markDirty();
       startEditing(id);
     }
@@ -326,6 +380,7 @@
     if (id) {
       JmindRenderer.setSelected(id);
       refreshView();
+      JmindRenderer.triggerAppear(id);
       markDirty();
       showToast('已粘贴', 'success');
     } else {
@@ -340,6 +395,7 @@
     if (id) {
       JmindRenderer.setSelected(id);
       refreshView();
+      JmindRenderer.triggerAppear(id);
       markDirty();
       showToast('已复制节点', 'success');
     } else {
@@ -744,7 +800,7 @@
       } else if (e.touches.length === 2 && dragMode === 'pinch') {
         const dist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
+          e.touches[0].clientX - e.touches[1].clientY
         );
         JmindRenderer.setScale(touchStartScale * (dist / touchStartDist));
         refreshView();
@@ -880,6 +936,24 @@
     searchNextBtn.addEventListener('click', searchNext);
     searchPrevBtn.addEventListener('click', searchPrev);
     searchClose.addEventListener('click', closeSearch);
+
+    // 节点浮动快捷菜单
+    nodePopup.addEventListener('mousedown', (e) => e.stopPropagation());
+    nodePopup.querySelectorAll('.popup-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.popupAction;
+        const selected = JmindRenderer.getSelected();
+        if (!selected) return;
+        switch (action) {
+          case 'add-child': doAddChild(selected); break;
+          case 'add-sibling': doAddSibling(selected); break;
+          case 'edit': startEditing(selected); break;
+          case 'toggle-collapse': doToggleCollapse(selected); break;
+          case 'duplicate': doDuplicate(); break;
+          case 'delete': doDelete(selected); break;
+        }
+      });
+    });
 
     // 画布鼠标事件
     canvas.addEventListener('mousedown', onMouseDown);
