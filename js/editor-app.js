@@ -1,6 +1,6 @@
 /**
  * jmind - Editor Application
- * 编辑器主逻辑：事件处理、快捷键、工具栏、右键菜单、搜索、自动保存、浮动快捷菜单
+ * 编辑器主逻辑：事件处理、快捷键、工具栏、右键菜单、搜索、自动保存
  */
 (function () {
   'use strict';
@@ -43,13 +43,8 @@
   const ctx = JmindRenderer.init(canvas, container);
   JmindLayout.init(ctx);
 
-  // ---------- 主题应用 ----------
-  function applyTheme() {
-    const settings = JmindStorage.getSettings();
-    const theme = settings.theme || 'default';
-    document.documentElement.setAttribute('data-theme', theme);
-  }
-  applyTheme();
+  // ---------- 主题应用（外观模式 × 主题色） ----------
+  JmindStorage.applyTheme();
 
   // ---------- Toast ----------
   let toastTimer = null;
@@ -800,7 +795,7 @@
       } else if (e.touches.length === 2 && dragMode === 'pinch') {
         const dist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientX - e.touches[1].clientY
+          e.touches[0].clientY - e.touches[1].clientY
         );
         JmindRenderer.setScale(touchStartScale * (dist / touchStartDist));
         refreshView();
