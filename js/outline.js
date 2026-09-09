@@ -1,528 +1,452 @@
 /**
- * jmind - 大纲视图模块
- * 树形列表展示、折叠、行内编辑、拖拽排序、键盘导航
- * 依赖：JmindCore, JmindRenderer, JmindLayout
+ * jmind - Outline Module
+ * 大纲视图：以缩进列表展示思维导图树，支持折叠/展开、选中、行内编辑、键盘导航、拖拽排序
+ * 与 Canvas 视图共享同一份 JmindCore 数据，可来回切换
  */
 const JmindOutline = (function () {
-    'use strict';
+  'use strict';
 
-    const L = (key) => (typeof JmindI18n !== 'undefined' ? JmindI18n.t(key) : key);
+  let panel = null;
+  let onChange = null;   // 数据变更回调（由编辑器注入：markDirty + refreshView）
+  let editingRow = null; // 当前行内编辑的 row 元素
 
-    let panel = null;
-    let searchInput = null;
-    let collapsed = new Set();
-    let dragState = null;
-    let justDragged = false;
-    let editingRow = null;
-    let onSelectCallback = null;
+  // ---------- 拖拽排序状态 ----------
+  const DRAG_THRESHOLD = 6;
+  let dragState = null;   // { nodeId, startX, startY, row, active }
+  let dragTarget = null;  // { nodeId, position: 'before'|'after'|'child' }
+  let justDragged = false;
+  let dropLine = null;
+  let dropBox = null;
 
-    // ============================================================
-    //  初始化
-    // ============================================================
-    function init(container, onSelect) {
-        panel = container;
-        onSelectCallback = onSelect;
-        panel.innerHTML = `
-            <div class="outline-header">
-                <span class="outline-title" data-i18n="outline">大纲</span>
-                <input type="text" class="outline-search" id="outline-search" data-i18n-placeholder="search_placeholder" placeholder="搜索节点...">
-            </div>
-            <div class="outline-body" id="outline-body"></div>
-        `;
-        searchInput = panel.querySelector('#outline-search');
-        bindEvents();
+  function init(el, handlers) {
+    panel = el;
+    if (handlers) {
+      if (handlers.onChange) onChange = handlers.onChange;
     }
+    bindEvents();
+  }
 
-    // ============================================================
-    //  渲染
-    // ============================================================
-    function render() {
-        const body = panel.querySelector('#outline-body');
-        const mind = JmindCore.getMindMap();
-        if (!mind) { body.innerHTML = ''; return; }
+  // ---------- 渲染 ----------
+  function render(selectedId) {
+    if (!panel) return;
+    const mindMap = JmindCore.getMindMap();
+    const collapsed = JmindCore.getCollapsedSet();
+    panel.innerHTML = '';
+    if (!mindMap) return;
 
-        const query = searchInput.value.trim().toLowerCase();
-        const matches = query ? findMatches(mind.root, query) : null;
+    const list = document.createElement('ul');
+    list.className = 'outline-list';
+    list.appendChild(buildRow(mindMap, collapsed, selectedId, 0));
+    panel.appendChild(list);
+  }
 
-        let html = '';
-        html += renderNode(mind.root, 0, query, matches);
-        body.innerHTML = html;
+  function buildRow(node, collapsed, selectedId, depth) {
+    const li = document.createElement('li');
+    li.className = 'outline-item';
+    li.dataset.id = node.id;
 
-        // 高亮选中
-        const selectedId = JmindRenderer.getSelected();
-        if (selectedId) {
-            const row = body.querySelector(`.outline-item[data-id="${selectedId}"] .outline-row`);
-            if (row) row.classList.add('selected');
-        }
+    const hasChildren = node.children && node.children.length > 0;
+    const isCollapsed = collapsed.has(node.id);
 
-        // 搜索高亮
-        if (query) {
-            body.querySelectorAll('.outline-text').forEach(el => {
-                const text = el.textContent;
-                const idx = text.toLowerCase().indexOf(query);
-                if (idx >= 0) {
-                    el.innerHTML = escapeHtml(text.slice(0, idx))
-                        + `<mark>${escapeHtml(text.slice(idx, idx + query.length))}</mark>`
-                        + escapeHtml(text.slice(idx + query.length));
-                }
-            });
-        }
+    const row = document.createElement('div');
+    row.className = 'outline-row' + (selectedId === node.id ? ' selected' : '');
+    row.style.setProperty('--depth', depth);
+
+    const arrow = document.createElement('span');
+    arrow.className = 'outline-arrow' + (hasChildren ? '' : ' leaf');
+    arrow.textContent = hasChildren ? (isCollapsed ? '▸' : '▾') : '';
+    if (hasChildren) arrow.title = JmindI18n.t('menu_toggle_collapse');
+
+    const dot = document.createElement('span');
+    dot.className = 'outline-dot';
+    dot.style.background = node.color || '#5B9BD5';
+
+    const text = document.createElement('span');
+    text.className = 'outline-text';
+    text.textContent = node.text || '';
+
+    row.appendChild(arrow);
+    row.appendChild(dot);
+    row.appendChild(text);
+    applyRowStyle(row, node);
+    li.appendChild(row);
+
+    if (hasChildren && !isCollapsed) {
+      const sub = document.createElement('ul');
+      node.children.forEach(child => sub.appendChild(buildRow(child, collapsed, selectedId, depth + 1)));
+      li.appendChild(sub);
     }
+    return li;
+  }
 
-    function renderNode(node, depth, query, matches) {
-        const hasChildren = node.children && node.children.length > 0;
-        const isCollapsed = collapsed.has(node.id);
-        const isRoot = node.id === JmindCore.getMindMap()?.root.id;
+  // ---------- 行文本应用节点字体样式 ----------
+  function applyRowStyle(row, node) {
+    const textEl = row.querySelector('.outline-text');
+    if (!textEl) return;
+    const st = JmindCore.getNodeStyle(node);
+    textEl.style.fontSize = st.fontSize + 'px';
+    textEl.style.fontWeight = st.bold ? '700' : '400';
+    textEl.style.fontStyle = st.italic ? 'italic' : 'normal';
+    textEl.style.textDecoration = st.underline ? 'underline' : 'none';
+    textEl.style.fontFamily = JmindCore.getFontFamilyCss(st.fontFamily);
+  }
 
-        // 搜索过滤
-        if (query && matches && !matches.has(node.id)) {
-            // 如果子节点有匹配，仍显示当前节点
-            if (!hasChildren || !node.children.some(c => matches.has(c.id) || hasDescendantMatch(c, matches))) {
-                return '';
-            }
-        }
+  function applyInputStyle(input, node) {
+    const st = JmindCore.getNodeStyle(node);
+    input.style.fontSize = st.fontSize + 'px';
+    input.style.fontWeight = st.bold ? '700' : '400';
+    input.style.fontStyle = st.italic ? 'italic' : 'normal';
+    input.style.textDecoration = st.underline ? 'underline' : 'none';
+    input.style.fontFamily = JmindCore.getFontFamilyCss(st.fontFamily);
+  }
 
-        let html = `<div class="outline-item" data-id="${node.id}" data-depth="${depth}">`;
-        html += `<div class="outline-row" style="padding-left:${depth * 18 + 8}px">`;
+  // ---------- 可见节点顺序（用于键盘导航） ----------
+  function getVisibleIds() {
+    const mindMap = JmindCore.getMindMap();
+    const collapsed = JmindCore.getCollapsedSet();
+    const ids = [];
+    if (!mindMap) return ids;
+    (function walk(node) {
+      ids.push(node.id);
+      if (node.children && !collapsed.has(node.id)) node.children.forEach(walk);
+    })(mindMap);
+    return ids;
+  }
 
-        // 折叠箭头
-        if (hasChildren) {
-            html += `<span class="outline-arrow ${isCollapsed ? 'collapsed' : ''}">▶</span>`;
-        } else {
-            html += `<span class="outline-arrow placeholder"></span>`;
-        }
+  // ---------- 选中（只更新样式类，不重建 DOM，保证双击可用） ----------
+  function selectOnly(nodeId) {
+    if (!panel) return;
+    panel.querySelectorAll('.outline-row.selected').forEach(r => r.classList.remove('selected'));
+    if (!nodeId) return;
+    const item = panel.querySelector('.outline-item[data-id="' + CSS.escape(nodeId) + '"]');
+    if (item) item.querySelector('.outline-row').classList.add('selected');
+  }
 
-        // 节点文本
-        const text = node.text || '';
-        html += `<span class="outline-text">${escapeHtml(text)}</span>`;
+  // ---------- 行内编辑 ----------
+  function startEdit(nodeId) {
+    if (!panel || !nodeId) return;
+    stopEdit(false);
+    const item = panel.querySelector('.outline-item[data-id="' + CSS.escape(nodeId) + '"]');
+    if (!item) return;
+    const row = item.querySelector('.outline-row');
+    const textEl = row.querySelector('.outline-text');
+    if (!textEl) return;
 
-        html += `</div>`;
+    const node = JmindCore.getNodeById(nodeId)?.node;
+    if (!node) return;
 
-        // 子节点
-        if (hasChildren && !isCollapsed) {
-            node.children.forEach(child => {
-                html += renderNode(child, depth + 1, query, matches);
-            });
-        }
+    editingRow = row;
+    row.classList.add('editing');
+    const input = document.createElement('input');
+    input.className = 'outline-input';
+    input.value = node.text || '';
+    applyInputStyle(input, node);
+    textEl.replaceWith(input);
+    input.focus();
+    input.select();
 
-        html += `</div>`;
-        return html;
-    }
-
-    function hasDescendantMatch(node, matches) {
-        if (matches.has(node.id)) return true;
-        if (node.children) {
-            return node.children.some(c => hasDescendantMatch(c, matches));
-        }
-        return false;
-    }
-
-    function findMatches(node, query) {
-        const set = new Set();
-        function walk(n) {
-            if ((n.text || '').toLowerCase().includes(query)) set.add(n.id);
-            if (n.children) n.children.forEach(walk);
-        }
-        walk(node);
-        return set;
-    }
-
-    // ============================================================
-    //  事件绑定
-    // ============================================================
-    function bindEvents() {
-        const body = panel.querySelector('#outline-body');
-
-        // 搜索
-        searchInput.addEventListener('input', () => render());
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { searchInput.value = ''; render(); searchInput.blur(); }
-        });
-
-        // 折叠箭头
-        body.addEventListener('click', (e) => {
-            if (justDragged) { justDragged = false; return; }
-            const arrow = e.target.closest('.outline-arrow');
-            if (arrow && !arrow.classList.contains('placeholder')) {
-                e.stopPropagation();
-                const item = arrow.closest('.outline-item');
-                const id = item.dataset.id;
-                if (collapsed.has(id)) collapsed.delete(id);
-                else collapsed.add(id);
-                render();
-                return;
-            }
-            const row = e.target.closest('.outline-row');
-            if (!row || e.target.closest('.outline-input')) return;
-            const item = row.closest('.outline-item');
-            if (!item) return;
-            const nodeId = item.dataset.id;
-            JmindRenderer.setSelected(nodeId);
-            selectOnly(nodeId);
-            reveal(nodeId);
-            if (onSelectCallback) onSelectCallback(nodeId);
-        });
-
-        // 双击编辑（根节点也可编辑）
-        body.addEventListener('dblclick', (e) => {
-            const row = e.target.closest('.outline-row');
-            if (!row || e.target.closest('.outline-arrow')) return;
-            const item = row.closest('.outline-item');
-            if (!item) return;
-            startEdit(item.dataset.id);
-        });
-
-        // 拖拽排序
-        body.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return;
-            // 点击其他区域时结束编辑
-            if (editingRow && !e.target.closest('.outline-input')) {
-                stopEdit(true);
-            }
-            const row = e.target.closest('.outline-row');
-            if (!row || e.target.closest('.outline-arrow') || e.target.closest('.outline-input')) return;
-            const item = row.closest('.outline-item');
-            if (!item) return;
-            const nodeId = item.dataset.id;
-            // 根节点不参与拖拽排序
-            if (!nodeId || nodeId === JmindCore.getMindMap()?.id) return;
-
-            dragState = {
-                nodeId,
-                startX: e.clientX,
-                startY: e.clientY,
-                row,
-                active: false,
-                placeholder: null,
-                originalNext: null
-            };
-            // 注意：不在 mousedown 中调用 e.preventDefault()，
-            // 否则会阻止 dblclick 事件触发，导致双击编辑失效。
-            // 文本选择在拖拽真正开始时通过 userSelect 临时阻止。
-            document.addEventListener('mousemove', onDragMove);
-            document.addEventListener('mouseup', onDragUp);
-        });
-    }
-
-    function onDragMove(e) {
-        if (!dragState) return;
-        const dx = e.clientX - dragState.startX;
-        const dy = e.clientY - dragState.startY;
-
-        if (!dragState.active) {
-            if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
-            // 拖拽真正开始：临时阻止文本选择
-            dragState.active = true;
-            document.body.style.userSelect = 'none';
-            dragState.row.classList.add('dragging');
-            // 创建占位符
-            const placeholder = document.createElement('div');
-            placeholder.className = 'outline-placeholder';
-            placeholder.style.height = dragState.row.offsetHeight + 'px';
-            dragState.placeholder = placeholder;
-            dragState.originalNext = dragState.row.nextSibling;
-            dragState.row.parentNode.insertBefore(placeholder, dragState.row);
-            dragState.row.style.position = 'fixed';
-            dragState.row.style.zIndex = '100';
-            dragState.row.style.pointerEvents = 'none';
-            dragState.row.style.opacity = '0.9';
-        }
-
-        // 跟随鼠标
-        const rect = dragState.placeholder.getBoundingClientRect();
-        dragState.row.style.left = (rect.left + dx) + 'px';
-        dragState.row.style.top = (rect.top + dy) + 'px';
-        dragState.row.style.width = rect.width + 'px';
-
-        // 计算放置位置
-        updateDropTarget(e.clientY);
-    }
-
-    function updateDropTarget(y) {
-        const body = panel.querySelector('#outline-body');
-        const items = body.querySelectorAll('.outline-item:not(.dragging)');
-        let closest = null;
-        let closestDist = Infinity;
-        let before = true;
-
-        items.forEach(item => {
-            const row = item.querySelector('.outline-row');
-            if (!row) return;
-            const rect = row.getBoundingClientRect();
-            const center = rect.top + rect.height / 2;
-            const dist = Math.abs(y - center);
-            if (dist < closestDist) {
-                closestDist = dist;
-                closest = item;
-                before = y < center;
-            }
-        });
-
-        // 清除旧的指示
-        body.querySelectorAll('.outline-drop-before, .outline-drop-after').forEach(el => {
-            el.classList.remove('outline-drop-before', 'outline-drop-after');
-        });
-
-        if (closest) {
-            const row = closest.querySelector('.outline-row');
-            if (row) row.classList.add(before ? 'outline-drop-before' : 'outline-drop-after');
-            dragState.dropTarget = { item: closest, before };
-        } else {
-            dragState.dropTarget = null;
-        }
-    }
-
-    function onDragUp(e) {
-        if (!dragState) return;
-        const wasActive = dragState.active;
-        const dropTarget = dragState.dropTarget;
-        const nodeId = dragState.nodeId;
-
-        cleanupDrag();
-
-        if (wasActive && dropTarget) {
-            justDragged = true;
-            // 执行移动
-            const targetId = dropTarget.item.dataset.id;
-            const before = dropTarget.before;
-            moveNode(nodeId, targetId, before);
-        }
-    }
-
-    function cleanupDrag() {
-        if (!dragState) return;
-        // 恢复文本选择
-        document.body.style.userSelect = '';
-        if (dragState.row) {
-            dragState.row.classList.remove('dragging');
-            dragState.row.style.position = '';
-            dragState.row.style.zIndex = '';
-            dragState.row.style.pointerEvents = '';
-            dragState.row.style.opacity = '';
-            dragState.row.style.left = '';
-            dragState.row.style.top = '';
-            dragState.row.style.width = '';
-        }
-        if (dragState.placeholder && dragState.placeholder.parentNode) {
-            dragState.placeholder.parentNode.removeChild(dragState.placeholder);
-        }
-        const body = panel.querySelector('#outline-body');
-        if (body) {
-            body.querySelectorAll('.outline-drop-before, .outline-drop-after').forEach(el => {
-                el.classList.remove('outline-drop-before', 'outline-drop-after');
-            });
-        }
-        document.removeEventListener('mousemove', onDragMove);
-        document.removeEventListener('mouseup', onDragUp);
-        dragState = null;
-    }
-
-    function moveNode(sourceId, targetId, before) {
-        const mind = JmindCore.getMindMap();
-        if (!mind) return;
-
-        // 找到源节点及其父节点
-        let sourceParent = null;
-        let sourceIndex = -1;
-        function findSource(node, parent) {
-            if (!node.children) return;
-            node.children.forEach((child, i) => {
-                if (child.id === sourceId) { sourceParent = node; sourceIndex = i; }
-                findSource(child, node);
-            });
-        }
-        findSource(mind.root, null);
-
-        if (sourceIndex < 0) return;
-
-        // 不能移动到自己的子节点下
-        const sourceNode = sourceParent.children[sourceIndex];
-        if (isDescendant(sourceNode, targetId)) return;
-
-        // 移除源节点
-        sourceParent.children.splice(sourceIndex, 1);
-
-        // 找到目标节点及其父节点
-        let targetParent = null;
-        let targetIndex = -1;
-        function findTarget(node, parent) {
-            if (node.id === targetId) { targetParent = parent; return; }
-            if (!node.children) return;
-            node.children.forEach((child, i) => {
-                if (child.id === targetId) { targetParent = node; targetIndex = i; }
-                findTarget(child, node);
-            });
-        }
-        findTarget(mind.root, null);
-
-        if (!targetParent) {
-            // 目标是根节点，作为子节点插入
-            if (!mind.root.children) mind.root.children = [];
-            mind.root.children.push(sourceNode);
-        } else {
-            if (before) {
-                targetParent.children.splice(targetIndex, 0, sourceNode);
-            } else {
-                targetParent.children.splice(targetIndex + 1, 0, sourceNode);
-            }
-        }
-
-        JmindCore.markDirty();
-        JmindRenderer.render();
-        render();
-        JmindRenderer.setSelected(sourceId);
-        selectOnly(sourceId);
-    }
-
-    function isDescendant(node, id) {
-        if (node.id === id) return true;
-        if (node.children) {
-            return node.children.some(c => isDescendant(c, id));
-        }
-        return false;
-    }
-
-    // ============================================================
-    //  行内编辑
-    // ============================================================
-    function startEdit(nodeId) {
-        if (editingRow) stopEdit(true);
-        const item = panel.querySelector(`.outline-item[data-id="${nodeId}"]`);
-        if (!item) return;
-        const row = item.querySelector('.outline-row');
-        const textEl = row.querySelector('.outline-text');
-        if (!textEl) return;
-
-        const currentText = textEl.textContent;
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'outline-input';
-        input.value = currentText;
-        input.style.width = Math.max(120, textEl.offsetWidth + 40) + 'px';
-
-        textEl.replaceWith(input);
-        input.focus();
-        input.select();
-        editingRow = { nodeId, input, textEl, row };
-
-        const finish = (save) => {
-            if (!editingRow || editingRow.input !== input) return;
-            const newText = input.value.trim();
-            if (save && newText && newText !== currentText) {
-                JmindCore.updateNodeText(nodeId, newText);
-                JmindRenderer.render();
-            }
-            // 先替换回文本，再清理状态（不要先 remove 再 replaceWith）
-            const span = document.createElement('span');
-            span.className = 'outline-text';
-            span.textContent = save && newText ? newText : currentText;
-            input.replaceWith(span);
-            editingRow = null;
-            render();
-            selectOnly(nodeId);
-        };
-
-        input.addEventListener('blur', () => finish(true));
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); finish(true); }
-            else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
-            else if (e.key === 'Tab') {
-                e.preventDefault();
-                finish(true);
-                // 添加子节点
-                setTimeout(() => {
-                    JmindCore.addChild(nodeId);
-                    JmindRenderer.render();
-                    render();
-                    const newChild = JmindCore.getNodeById(nodeId)?.children?.slice(-1)[0];
-                    if (newChild) {
-                        JmindRenderer.setSelected(newChild.id);
-                        selectOnly(newChild.id);
-                        startEdit(newChild.id);
-                    }
-                }, 0);
-            }
-        });
-    }
-
-    function stopEdit(save) {
-        if (!editingRow) return;
-        const { input } = editingRow;
-        if (save) input.blur();
-        else {
-            // 直接取消
-            const currentText = editingRow.textEl.textContent;
-            const span = document.createElement('span');
-            span.className = 'outline-text';
-            span.textContent = currentText;
-            input.replaceWith(span);
-            editingRow = null;
-            render();
-        }
-    }
-
-    // ============================================================
-    //  辅助方法
-    // ============================================================
-    function selectOnly(nodeId) {
-        panel.querySelectorAll('.outline-row.selected').forEach(r => r.classList.remove('selected'));
-        const item = panel.querySelector(`.outline-item[data-id="${nodeId}"]`);
-        if (item) {
-            const row = item.querySelector('.outline-row');
-            if (row) row.classList.add('selected');
-        }
-    }
-
-    function reveal(nodeId) {
-        const item = panel.querySelector(`.outline-item[data-id="${nodeId}"]`);
-        if (item) {
-            item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-    }
-
-    function expandToNode(nodeId) {
-        // 展开所有祖先节点
-        const mind = JmindCore.getMindMap();
-        if (!mind) return;
-        function findPath(node, path) {
-            if (node.id === nodeId) return path;
-            if (node.children) {
-                for (const child of node.children) {
-                    const result = findPath(child, [...path, node.id]);
-                    if (result) return result;
-                }
-            }
-            return null;
-        }
-        const path = findPath(mind.root, []);
-        if (path) {
-            path.forEach(id => collapsed.delete(id));
-        }
-    }
-
-    function focusSearch() {
-        searchInput.focus();
-        searchInput.select();
-    }
-
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    // ============================================================
-    //  对外接口
-    // ============================================================
-    return {
-        init,
-        render,
-        startEdit,
-        stopEdit,
-        selectOnly,
-        reveal,
-        expandToNode,
-        focusSearch,
-        get editing() { return !!editingRow; }
+    let finished = false;
+    const finish = (save) => {
+      if (finished) return;
+      finished = true;
+      const value = save ? input.value.trim() : '';
+      if (save && value && value !== node.text) {
+        JmindCore.updateNodeText(nodeId, value);
+        if (onChange) onChange();
+      }
+      row.classList.remove('editing');
+      // 直接用 replaceWith 替换回文本节点（不要先 remove 再 replaceWith）
+      const newText = document.createElement('span');
+      newText.className = 'outline-text';
+      newText.textContent = node.text || '';
+      input.replaceWith(newText);
+      applyRowStyle(row, node);
+      editingRow = null;
     };
+
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finish(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
+  }
+
+  function stopEdit(save) {
+    if (!editingRow) return;
+    const input = editingRow.querySelector('.outline-input');
+    if (input) {
+      const nodeId = editingRow.closest('.outline-item')?.dataset.id;
+      const node = nodeId ? JmindCore.getNodeById(nodeId)?.node : null;
+      const value = save && input.value.trim() ? input.value.trim() : null;
+      if (value && node && value !== node.text) {
+        JmindCore.updateNodeText(nodeId, value);
+        if (onChange) onChange();
+      }
+      const textEl = document.createElement('span');
+      textEl.className = 'outline-text';
+      textEl.textContent = (node && node.text) || '';
+      input.replaceWith(textEl);
+      applyRowStyle(editingRow, node);
+      editingRow.classList.remove('editing');
+    }
+    editingRow = null;
+  }
+
+  function isEditing() { return editingRow !== null; }
+
+  // ---------- 选中滚动 ----------
+  function reveal(nodeId) {
+    if (!panel || !nodeId) return;
+    const item = panel.querySelector('.outline-item[data-id="' + CSS.escape(nodeId) + '"]');
+    if (item) item.scrollIntoView({ block: 'nearest' });
+  }
+
+  // ---------- 键盘导航（方向键） ----------
+  function navigate(key) {
+    const selected = JmindRenderer.getSelected();
+    const ids = getVisibleIds();
+    if (key === 'ArrowUp' || key === 'ArrowDown') {
+      let idx = ids.indexOf(selected);
+      if (idx < 0) idx = 0;
+      idx += (key === 'ArrowUp' ? -1 : 1);
+      idx = Math.max(0, Math.min(ids.length - 1, idx));
+      const target = ids[idx];
+      if (target) {
+        JmindRenderer.setSelected(target);
+        selectOnly(target);
+        reveal(target);
+      }
+      return;
+    }
+    // Left / Right
+    if (!selected) return;
+    const info = JmindCore.getNodeById(selected);
+    if (!info) return;
+    const node = info.node;
+    const collapsed = JmindCore.getCollapsedSet();
+    const hasChildren = node.children && node.children.length > 0;
+
+    if (key === 'ArrowRight') {
+      if (hasChildren && collapsed.has(selected)) {
+        JmindCore.toggleCollapse(selected);
+        if (onChange) onChange();
+      } else if (hasChildren) {
+        const first = node.children[0];
+        JmindRenderer.setSelected(first.id);
+        selectOnly(first.id);
+        reveal(first.id);
+      }
+    } else if (key === 'ArrowLeft') {
+      if (hasChildren && !collapsed.has(selected)) {
+        JmindCore.toggleCollapse(selected);
+        if (onChange) onChange();
+      } else {
+        const parent = JmindCore.getNodeParent(selected);
+        if (parent) {
+          JmindRenderer.setSelected(parent.id);
+          selectOnly(parent.id);
+          reveal(parent.id);
+        }
+      }
+    }
+  }
+
+  // ---------- 拖拽排序 ----------
+  function isDescendant(ancestorId, nodeId) {
+    let cur = nodeId;
+    while (cur) {
+      if (cur === ancestorId) return true;
+      const p = JmindCore.getNodeParent(cur);
+      cur = p ? p.id : null;
+    }
+    return false;
+  }
+
+  function ensureIndicators() {
+    if (dropLine) return;
+    dropLine = document.createElement('div');
+    dropLine.className = 'outline-drop-line';
+    dropBox = document.createElement('div');
+    dropBox.className = 'outline-drop-box';
+    panel.appendChild(dropLine);
+    panel.appendChild(dropBox);
+  }
+
+  function hideDropIndicators() {
+    if (dropLine) dropLine.style.display = 'none';
+    if (dropBox) dropBox.style.display = 'none';
+    dragTarget = null;
+  }
+
+  function updateDropIndicator(e) {
+    const mindMap = JmindCore.getMindMap();
+    if (!mindMap || !dragState) return;
+    const hitItem = e.target.closest('.outline-item');
+    const targetId = hitItem ? hitItem.dataset.id : null;
+    if (!targetId || targetId === dragState.nodeId || isDescendant(dragState.nodeId, targetId)) {
+      hideDropIndicators();
+      return;
+    }
+    const row = hitItem.querySelector('.outline-row');
+    if (!row) { hideDropIndicators(); return; }
+    const r = row.getBoundingClientRect();
+    const p = panel.getBoundingClientRect();
+    const top = r.top - p.top + panel.scrollTop;
+    const h = r.height;
+    let position;
+    if (e.clientY < r.top + h * 0.3) position = 'before';
+    else if (e.clientY > r.bottom - h * 0.3) position = 'after';
+    else position = 'child';
+    if (targetId === mindMap.id && position !== 'child') position = 'child'; // 根节点只能作为子节点目标
+    dragTarget = { nodeId: targetId, position };
+
+    ensureIndicators();
+    if (position === 'child') {
+      dropLine.style.display = 'none';
+      dropBox.style.display = 'block';
+      dropBox.style.top = (top + 2) + 'px';
+      dropBox.style.height = (h - 4) + 'px';
+    } else {
+      dropBox.style.display = 'none';
+      dropLine.style.display = 'block';
+      dropLine.style.top = (position === 'before' ? top : top + h) + 'px';
+    }
+  }
+
+  function doDrop() {
+    if (!dragTarget || !dragState) return;
+    const dragId = dragState.nodeId;
+    const targetId = dragTarget.nodeId;
+    const position = dragTarget.position;
+    let ok = false;
+    if (position === 'child') {
+      const t = JmindCore.getNodeById(targetId);
+      const cnt = t && t.node.children ? t.node.children.length : 0;
+      ok = JmindCore.moveNode(dragId, targetId, cnt);
+    } else {
+      const tp = JmindCore.getNodeParent(targetId);
+      if (tp) {
+        let ni = position === 'before' ? JmindCore.getNodeIndex(targetId, tp) : JmindCore.getNodeIndex(targetId, tp) + 1;
+        const dp = JmindCore.getNodeParent(dragId);
+        if (dp && dp.id === tp.id) {
+          const oi = JmindCore.getNodeIndex(dragId, tp);
+          if (oi < ni) ni--;
+        }
+        ok = JmindCore.moveNode(dragId, tp.id, ni);
+      }
+    }
+    if (ok) {
+      JmindRenderer.setSelected(dragId);
+      if (onChange) onChange();
+    }
+  }
+
+  function cleanupDrag() {
+    if (dragState && dragState.row) dragState.row.classList.remove('dragging');
+    dragState = null;
+    hideDropIndicators();
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onDragUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+
+  function onDragMove(e) {
+    if (!dragState) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (!dragState.active && Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
+      dragState.active = true;
+      dragState.row.classList.add('dragging');
+      document.body.style.cursor = 'move';
+      document.body.style.userSelect = 'none';
+      ensureIndicators();
+    }
+    if (dragState.active) updateDropIndicator(e);
+  }
+
+  function onDragUp(e) {
+    if (!dragState) return;
+    const wasActive = dragState.active;
+    if (wasActive) {
+      updateDropIndicator(e);
+      doDrop();
+      justDragged = true;
+      setTimeout(() => { justDragged = false; }, 0);
+    }
+    cleanupDrag();
+  }
+
+  // ---------- 事件 ----------
+  function bindEvents() {
+    if (!panel) return;
+    panel.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      // 行内编辑时点击面板外其他位置：提交当前编辑（不阻止冒泡到 document 的收起逻辑）
+      if (editingRow && !e.target.closest('.outline-input')) {
+        stopEdit(true);
+      }
+      // 开始拖拽候选：点击行（非箭头、非输入框、非根节点）
+      const row = e.target.closest('.outline-row');
+      if (!row || e.target.closest('.outline-arrow') || e.target.closest('.outline-input')) return;
+      const item = row.closest('.outline-item');
+      if (!item) return;
+      const nodeId = item.dataset.id;
+      if (!nodeId || nodeId === JmindCore.getMindMap()?.id) return;
+      dragState = { nodeId, startX: e.clientX, startY: e.clientY, row, active: false };
+      // 注意：不在 mousedown 中调用 e.preventDefault()，
+      // 否则会阻止 dblclick 事件触发，导致双击编辑失效。
+      // 文本选择在拖拽真正开始时通过 userSelect 临时阻止（见 onDragMove）。
+      document.addEventListener('mousemove', onDragMove);
+      document.addEventListener('mouseup', onDragUp);
+    });
+
+    panel.addEventListener('click', (e) => {
+      if (justDragged) { justDragged = false; return; }
+      const item = e.target.closest('.outline-item');
+      if (!item) {
+        // 点击空白区域：取消选中
+        if (JmindRenderer.getSelected()) {
+          JmindRenderer.setSelected(null);
+          selectOnly(null);
+        }
+        return;
+      }
+      const nodeId = item.dataset.id;
+      if (!nodeId) return;
+
+      // 点击折叠箭头
+      const arrow = e.target.closest('.outline-arrow');
+      if (arrow && !arrow.classList.contains('leaf')) {
+        JmindCore.toggleCollapse(nodeId);
+        if (onChange) onChange();
+        return;
+      }
+
+      // 点击行：选中（不重建 DOM）
+      JmindRenderer.setSelected(nodeId);
+      selectOnly(nodeId);
+      reveal(nodeId);
+    });
+
+    panel.addEventListener('dblclick', (e) => {
+      const row = e.target.closest('.outline-row');
+      if (!row) return;
+      const item = row.closest('.outline-item');
+      if (!item) return;
+      JmindRenderer.setSelected(item.dataset.id);
+      startEdit(item.dataset.id);
+    });
+  }
+
+  return {
+    init,
+    render,
+    startEdit,
+    stopEdit,
+    isEditing,
+    navigate,
+    reveal
+  };
 })();
