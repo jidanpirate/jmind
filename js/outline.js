@@ -154,9 +154,8 @@ const JmindOutline = (function () {
         JmindCore.updateNodeText(nodeId, value);
         if (onChange) onChange();
       }
-      input.remove();
       row.classList.remove('editing');
-      // 重新放回文本节点并重渲染选中态与字体样式
+      // 用文本节点替换输入框，恢复显示
       const newText = document.createElement('span');
       newText.className = 'outline-text';
       newText.textContent = node.text || '';
