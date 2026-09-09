@@ -20,6 +20,26 @@ const JmindCore = (function () {
   // 多语言默认文本（i18n 未加载时回退中文）
   function tr(key) { return (typeof JmindI18n !== 'undefined' && JmindI18n.t) ? JmindI18n.t(key) : key; }
 
+  // ---------- 字体样式 ----------
+  const FONT_FAMILIES = {
+    default: '"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif',
+    song: '"SimSun","Songti SC","宋体",serif',
+    hei: '"SimHei","Heiti SC","黑体",sans-serif',
+    kai: '"KaiTi","Kaiti SC","楷体",serif',
+    mono: '"Consolas","Menlo","Courier New",monospace'
+  };
+  function getFontFamilyCss(key) { return FONT_FAMILIES[key] || FONT_FAMILIES.default; }
+  // 归一化节点字体样式（缺失字段回退默认值）
+  function getNodeStyle(node) {
+    return {
+      fontSize: (node && Number(node.fontSize) > 0) ? Number(node.fontSize) : 14,
+      bold: !!(node && node.bold),
+      italic: !!(node && node.italic),
+      underline: !!(node && node.underline),
+      fontFamily: (node && node.fontFamily) || 'default'
+    };
+  }
+
   function getNodeById(id, node = mindMap, parent = null) {
     if (!node) return null;
     if (node.id === id) return { node, parent };
@@ -49,7 +69,7 @@ const JmindCore = (function () {
     function walk(node) { if (!node) return; if (node.text && node.text.toLowerCase().includes(lower)) results.push(node.id); if (node.children) node.children.forEach(walk); }
     walk(mindMap); return results;
   }
-  function fixNode(node) { if (!node.id) node.id = generateId(); if (!node.text) node.text = tr('default_node'); if (!node.color) node.color = '#5B9BD5'; if (!node.children) node.children = []; node.children.forEach(fixNode); return node; }
+  function fixNode(node) { if (!node.id) node.id = generateId(); if (!node.text) node.text = tr('default_node'); if (!node.color) node.color = '#5B9BD5'; if (!node.children) node.children = []; if (!node.fontSize) node.fontSize = 14; if (typeof node.bold !== 'boolean') node.bold = false; if (typeof node.italic !== 'boolean') node.italic = false; if (typeof node.underline !== 'boolean') node.underline = false; if (!node.fontFamily) node.fontFamily = 'default'; node.children.forEach(fixNode); return node; }
 
   function createSampleMindMap() {
     nodeIdCounter = 0;
@@ -95,7 +115,7 @@ const JmindCore = (function () {
     const parent = result.node; const depth = getNodeDepth(parentId) + 1; const side = getNodeSide(parentId);
     const siblingCount = parent.children ? parent.children.length : 0;
     const newId = generateId();
-    const newNode = { id: newId, text: tr('new_node'), color: generateColor(depth, side, siblingCount), collapsed: false, children: [] };
+    const newNode = { id: newId, text: tr('new_node'), color: generateColor(depth, side, siblingCount), collapsed: false, children: [], fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default' };
     if (!parent.children) parent.children = []; parent.children.push(newNode);
     if (collapsedNodes.has(parentId)) { collapsedNodes.delete(parentId); parent.collapsed = false; }
     pushHistory(); return newId;
@@ -106,7 +126,7 @@ const JmindCore = (function () {
     const index = getNodeIndex(nodeId, parent); if (index < 0) return null;
     const depth = getNodeDepth(nodeId); const side = getNodeSide(nodeId);
     const newId = generateId();
-    const newNode = { id: newId, text: tr('new_node'), color: generateColor(depth, side, index + 1), collapsed: false, children: [] };
+    const newNode = { id: newId, text: tr('new_node'), color: generateColor(depth, side, index + 1), collapsed: false, children: [], fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default' };
     parent.children.splice(index + 1, 0, newNode); pushHistory(); return newId;
   }
   function deleteNode(nodeId) {
@@ -117,6 +137,16 @@ const JmindCore = (function () {
   }
   function updateNodeText(nodeId, text) { const result = getNodeById(nodeId); if (!result) return false; result.node.text = text; pushHistory(); return true; }
   function updateNodeColor(nodeId, color) { const result = getNodeById(nodeId); if (!result) return false; result.node.color = color; pushHistory(); return true; }
+  function updateNodeStyle(nodeId, patch) {
+    const result = getNodeById(nodeId); if (!result) return false;
+    const node = result.node; const st = patch || {};
+    if (typeof st.bold === 'boolean') node.bold = st.bold;
+    if (typeof st.italic === 'boolean') node.italic = st.italic;
+    if (typeof st.underline === 'boolean') node.underline = st.underline;
+    if (Number(st.fontSize) > 0) node.fontSize = Number(st.fontSize);
+    if (st.fontFamily && FONT_FAMILIES[st.fontFamily]) node.fontFamily = st.fontFamily;
+    pushHistory(); return true;
+  }
   function toggleCollapse(nodeId) {
     const node = getNodeById(nodeId)?.node; if (!node || !node.children || node.children.length === 0) return;
     if (collapsedNodes.has(nodeId)) { collapsedNodes.delete(nodeId); node.collapsed = false; }
@@ -176,5 +206,5 @@ const JmindCore = (function () {
   function getCollapsedSet() { return collapsedNodes; }
   function toExportData() { return { format: 'jmind', version: '1.1', created: new Date().toISOString(), modified: new Date().toISOString(), root: JSON.parse(JSON.stringify(mindMap)) }; }
 
-  return { ROOT_COLOR, COLOR_PALETTE, getPalette, getRootColor, setMindMap, getMindMap, getCollapsedSet, createSampleMindMap, clearAll, getNodeById, getNodeParent, getNodeIndex, getNodeDepth, getNodeSide, countNodes, countVisibleNodes, searchNodes, addChildNode, addSiblingNode, deleteNode, updateNodeText, updateNodeColor, toggleCollapse, moveNode, generateId, generateColor, pushHistory, undo, redo, canUndo, canRedo, resetHistory, copyNode, pasteNode, duplicateNode, hasClipboard, toExportData };
+  return { ROOT_COLOR, COLOR_PALETTE, getPalette, getRootColor, FONT_FAMILIES, getFontFamilyCss, getNodeStyle, setMindMap, getMindMap, getCollapsedSet, createSampleMindMap, clearAll, getNodeById, getNodeParent, getNodeIndex, getNodeDepth, getNodeSide, countNodes, countVisibleNodes, searchNodes, addChildNode, addSiblingNode, deleteNode, updateNodeText, updateNodeColor, updateNodeStyle, toggleCollapse, moveNode, generateId, generateColor, pushHistory, undo, redo, canUndo, canRedo, resetHistory, copyNode, pasteNode, duplicateNode, hasClipboard, toExportData };
 })();

@@ -31,25 +31,28 @@ const JmindLayout = (function () {
     nodePositions.clear();
   }
 
-  // ---------- 文本测量 ----------
-  function measureText(text) {
+  // ---------- 文本测量（跟随节点字体样式） ----------
+  function measureText(text, node) {
     if (!ctx) return { width: NODE_MIN_WIDTH, height: NODE_HEIGHT, lines: [text] };
-    ctx.font = '14px ' + (getComputedStyle(document.body).fontFamily || 'sans-serif');
+    const st = JmindCore.getNodeStyle(node);
+    ctx.font = (st.italic ? 'italic ' : '') + (st.bold ? '700 ' : '400 ') + st.fontSize + 'px ' + JmindCore.getFontFamilyCss(st.fontFamily);
     const lines = (text || '').split('\n');
     let maxWidth = 0;
     lines.forEach(line => {
       const w = ctx.measureText(line).width;
       if (w > maxWidth) maxWidth = w;
     });
-    const width = Math.max(NODE_MIN_WIDTH, Math.min(NODE_MAX_WIDTH, maxWidth + NODE_PADDING_X * 2));
-    const height = Math.max(NODE_HEIGHT, lines.length * 18 + NODE_PADDING_Y * 2);
+    const widthCap = Math.min(NODE_MAX_WIDTH + Math.max(0, st.fontSize - 14) * 10, 460);
+    const width = Math.max(NODE_MIN_WIDTH, Math.min(widthCap, maxWidth + NODE_PADDING_X * 2));
+    const lineHeight = Math.max(18, Math.round(st.fontSize * 1.3));
+    const height = Math.max(NODE_HEIGHT, lines.length * lineHeight + NODE_PADDING_Y * 2);
     return { width, height, lines };
   }
 
   // ---------- 子树高度计算 ----------
   function computeSubtreeHeight(node, collapsedSet) {
     if (collapsedSet.has(node.id) || !node.children || node.children.length === 0) {
-      return NODE_HEIGHT;
+      return measureText(node.text, node).height;
     }
     let total = 0;
     node.children.forEach(child => {
@@ -63,7 +66,7 @@ const JmindLayout = (function () {
     nodePositions.clear();
     if (!mindMap) return;
 
-    const rootSize = measureText(mindMap.text);
+    const rootSize = measureText(mindMap.text, mindMap);
     nodePositions.set(mindMap.id, {
       x: -rootSize.width / 2,
       y: -rootSize.height / 2,
@@ -88,7 +91,7 @@ const JmindLayout = (function () {
       let rightY = -totalHeight / 2;
       rightChildren.forEach(child => {
         const childHeight = computeSubtreeHeight(child, collapsedSet);
-        const childSize = measureText(child.text);
+        const childSize = measureText(child.text, child);
         const cx = rootSize.width / 2 + H_GAP + childSize.width / 2;
         const cy = rightY + childHeight / 2;
         layoutSubtree(child, cx, cy, 1, 'right', collapsedSet);
@@ -99,7 +102,7 @@ const JmindLayout = (function () {
       let leftY = -totalHeight / 2;
       leftChildren.forEach(child => {
         const childHeight = computeSubtreeHeight(child, collapsedSet);
-        const childSize = measureText(child.text);
+        const childSize = measureText(child.text, child);
         const cx = -rootSize.width / 2 - H_GAP - childSize.width / 2;
         const cy = leftY + childHeight / 2;
         layoutSubtree(child, cx, cy, 1, 'left', collapsedSet);
@@ -109,7 +112,7 @@ const JmindLayout = (function () {
   }
 
   function layoutSubtree(node, cx, cy, depth, side, collapsedSet) {
-    const size = measureText(node.text);
+    const size = measureText(node.text, node);
     const x = cx - size.width / 2;
     const y = cy - size.height / 2;
     nodePositions.set(node.id, {
@@ -128,7 +131,7 @@ const JmindLayout = (function () {
 
     node.children.forEach(child => {
       const childHeight = computeSubtreeHeight(child, collapsedSet);
-      const childSize = measureText(child.text);
+      const childSize = measureText(child.text, child);
       const childX = side === 'right'
         ? cx + size.width / 2 + H_GAP + childSize.width / 2
         : cx - size.width / 2 - H_GAP - childSize.width / 2;
