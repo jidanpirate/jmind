@@ -23,6 +23,9 @@
   const nodePopup = document.getElementById('node-popup');
   const outlinePanel = document.getElementById('outline-panel');
   const outlineBtn = document.getElementById('btn-outline');
+  const fontPanel = document.getElementById('font-panel');
+  const fontSizeSelect = document.getElementById('font-size-select');
+  const fontFamilySelect = document.getElementById('font-family-select');
 
   // 翻译函数
   const L = JmindI18n.t;
@@ -380,6 +383,29 @@
     return ok;
   }
 
+  // 大纲模式：提升层级（Shift+Tab，减少缩进）
+  function doOutdent(nodeId) {
+    const root = JmindCore.getMindMap();
+    if (!nodeId || nodeId === root?.id) {
+      showToast(L('toast_root_no_outdent'), 'warning');
+      return;
+    }
+    const parent = JmindCore.getNodeParent(nodeId);
+    if (!parent || parent.id === root?.id) {
+      showToast(L('toast_outdent_top'), 'warning');
+      return;
+    }
+    const grand = JmindCore.getNodeParent(parent.id);
+    if (!grand) return;
+    const idx = JmindCore.getNodeIndex(parent.id, grand) + 1;
+    if (JmindCore.moveNode(nodeId, grand.id, idx)) {
+      JmindRenderer.setSelected(nodeId);
+      refreshView();
+      markDirty();
+      if (outlineMode) JmindOutline.reveal(nodeId);
+    }
+  }
+
   function doUndo() {
     if (JmindCore.undo()) {
       refreshView();
@@ -540,6 +566,54 @@
     });
   }
 
+  // ---------- 字体样式 ----------
+  function getSelectedNode() {
+    const selected = JmindRenderer.getSelected();
+    if (!selected) return null;
+    return JmindCore.getNodeById(selected)?.node || null;
+  }
+
+  function syncFontPanel() {
+    if (!fontPanel) return;
+    const node = getSelectedNode();
+    if (!node) return;
+    const st = JmindCore.getNodeStyle(node);
+    fontPanel.querySelectorAll('.font-btn').forEach(btn => {
+      btn.classList.toggle('active', !!st[btn.dataset.fontProp]);
+    });
+    if (fontSizeSelect) fontSizeSelect.value = String(st.fontSize);
+    if (fontFamilySelect) fontFamilySelect.value = st.fontFamily;
+  }
+
+  function applyFontStyle(patch) {
+    const selected = JmindRenderer.getSelected();
+    if (!selected) return;
+    JmindCore.updateNodeStyle(selected, patch);
+    refreshView();
+    markDirty();
+    syncFontPanel();
+  }
+
+  function buildFontPanel() {
+    if (!fontPanel) return;
+    fontPanel.querySelectorAll('.font-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const node = getSelectedNode();
+        if (!node) return;
+        const prop = btn.dataset.fontProp;
+        const st = JmindCore.getNodeStyle(node);
+        applyFontStyle({ [prop]: !st[prop] });
+      });
+    });
+    if (fontSizeSelect) {
+      fontSizeSelect.addEventListener('change', () => applyFontStyle({ fontSize: Number(fontSizeSelect.value) }));
+    }
+    if (fontFamilySelect) {
+      fontFamilySelect.addEventListener('change', () => applyFontStyle({ fontFamily: fontFamilySelect.value }));
+    }
+  }
+
   // ---------- 鼠标事件 ----------
   function getMousePos(e) {
     const rect = container.getBoundingClientRect();
@@ -691,6 +765,7 @@
       contextMenu.style.left = pos.clientX + 'px';
       contextMenu.style.top = pos.clientY + 'px';
       if (colorPicker) colorPicker.classList.remove('active');
+      if (fontPanel) fontPanel.classList.remove('active');
       const mr = contextMenu.getBoundingClientRect();
       if (mr.right > window.innerWidth) contextMenu.style.left = (pos.clientX - mr.width) + 'px';
       if (mr.bottom > window.innerHeight) contextMenu.style.top = (pos.clientY - mr.height) + 'px';
@@ -753,6 +828,13 @@
     if (outlineMode && (key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight')) {
       e.preventDefault();
       JmindOutline.navigate(key);
+      return;
+    }
+
+    // 大纲模式：Shift+Tab 提升层级
+    if (outlineMode && e.shiftKey && key === 'Tab') {
+      e.preventDefault();
+      if (selected) doOutdent(selected);
       return;
     }
 
@@ -953,8 +1035,12 @@
     contextMenu.querySelectorAll('.menu-item').forEach(item => {
       item.addEventListener('click', () => {
         const action = item.dataset.action;
-        contextMenu.classList.remove('active');
+        // 子菜单类操作（颜色/字体）保持菜单打开，其余操作收起菜单
+        if (action !== 'change-color' && action !== 'font-style') {
+          contextMenu.classList.remove('active');
+        }
         if (colorPicker) colorPicker.classList.remove('active');
+        if (fontPanel) fontPanel.classList.remove('active');
         const selected = JmindRenderer.getSelected();
         if (!selected && action !== 'clear') return;
         switch (action) {
@@ -967,6 +1053,12 @@
           case 'duplicate': doDuplicate(); break;
           case 'change-color':
             if (colorPicker) colorPicker.classList.toggle('active');
+            break;
+          case 'font-style':
+            if (fontPanel) {
+              fontPanel.classList.toggle('active');
+              if (fontPanel.classList.contains('active')) syncFontPanel();
+            }
             break;
           case 'delete': doDelete(selected); break;
           case 'clear': doClearAll(); break;
@@ -1024,6 +1116,7 @@
         contextMenu.style.left = e.clientX + 'px';
         contextMenu.style.top = e.clientY + 'px';
         if (colorPicker) colorPicker.classList.remove('active');
+        if (fontPanel) fontPanel.classList.remove('active');
         const mr = contextMenu.getBoundingClientRect();
         if (mr.right > window.innerWidth) contextMenu.style.left = (e.clientX - mr.width) + 'px';
         if (mr.bottom > window.innerHeight) contextMenu.style.top = (e.clientY - mr.height) + 'px';
@@ -1035,6 +1128,7 @@
       if (!contextMenu.contains(e.target)) {
         contextMenu.classList.remove('active');
         if (colorPicker) colorPicker.classList.remove('active');
+        if (fontPanel) fontPanel.classList.remove('active');
       }
     });
     document.addEventListener('keydown', onKeyDown);
@@ -1045,6 +1139,7 @@
   // ---------- 启动 ----------
   function init() {
     buildColorPicker();
+    buildFontPanel();
     loadFile();
     bindToolbar();
     initTouch();
