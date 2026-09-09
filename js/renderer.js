@@ -310,17 +310,27 @@ const JmindRenderer = (function () {
       ctx.stroke();
     }
 
-    // 文本
+    // 文本（支持节点字体样式：字号/粗体/斜体/下划线/字体）
+    const st = JmindCore.getNodeStyle(node);
     ctx.fillStyle = '#fff';
-    ctx.font = '500 ' + (14 * scale) + 'px "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.font = (st.italic ? 'italic ' : '') + (st.bold ? '700 ' : '500 ') + (st.fontSize * scale) + 'px ' + JmindCore.getFontFamilyCss(st.fontFamily);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const lines = (node.text || '').split('\n');
-    const lineHeight = 18 * scale;
+    const lineHeight = st.fontSize * 1.3 * scale;
     const totalTextHeight = lines.length * lineHeight;
     let textY = y + h / 2 - totalTextHeight / 2 + lineHeight / 2;
     lines.forEach(line => {
       ctx.fillText(line, x + w / 2, textY);
+      if (st.underline) {
+        const tw = ctx.measureText(line).width;
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = Math.max(1, 1.4 * scale);
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2 - tw / 2, textY + st.fontSize * 0.38 * scale);
+        ctx.lineTo(x + w / 2 + tw / 2, textY + st.fontSize * 0.38 * scale);
+        ctx.stroke();
+      }
       textY += lineHeight;
     });
 

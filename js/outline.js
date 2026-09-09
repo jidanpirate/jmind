@@ -1,6 +1,6 @@
 /**
  * jmind - Outline Module
- * 大纲视图：以缩进列表展示思维导图树，支持折叠/展开、选中、行内编辑、键盘导航
+ * 大纲视图：以缩进列表展示思维导图树，支持折叠/展开、选中、行内编辑、键盘导航、拖拽排序
  * 与 Canvas 视图共享同一份 JmindCore 数据，可来回切换
  */
 const JmindOutline = (function () {
@@ -9,6 +9,14 @@ const JmindOutline = (function () {
   let panel = null;
   let onChange = null;   // 数据变更回调（由编辑器注入：markDirty + refreshView）
   let editingRow = null; // 当前行内编辑的 row 元素
+
+  // ---------- 拖拽排序状态 ----------
+  const DRAG_THRESHOLD = 6;
+  let dragState = null;   // { nodeId, startX, startY, row, active }
+  let dragTarget = null;  // { nodeId, position: 'before'|'after'|'child' }
+  let justDragged = false;
+  let dropLine = null;
+  let dropBox = null;
 
   function init(el, handlers) {
     panel = el;
@@ -60,6 +68,7 @@ const JmindOutline = (function () {
     row.appendChild(arrow);
     row.appendChild(dot);
     row.appendChild(text);
+    applyRowStyle(row, node);
     li.appendChild(row);
 
     if (hasChildren && !isCollapsed) {
@@ -68,6 +77,27 @@ const JmindOutline = (function () {
       li.appendChild(sub);
     }
     return li;
+  }
+
+  // ---------- 行文本应用节点字体样式 ----------
+  function applyRowStyle(row, node) {
+    const textEl = row.querySelector('.outline-text');
+    if (!textEl) return;
+    const st = JmindCore.getNodeStyle(node);
+    textEl.style.fontSize = st.fontSize + 'px';
+    textEl.style.fontWeight = st.bold ? '700' : '400';
+    textEl.style.fontStyle = st.italic ? 'italic' : 'normal';
+    textEl.style.textDecoration = st.underline ? 'underline' : 'none';
+    textEl.style.fontFamily = JmindCore.getFontFamilyCss(st.fontFamily);
+  }
+
+  function applyInputStyle(input, node) {
+    const st = JmindCore.getNodeStyle(node);
+    input.style.fontSize = st.fontSize + 'px';
+    input.style.fontWeight = st.bold ? '700' : '400';
+    input.style.fontStyle = st.italic ? 'italic' : 'normal';
+    input.style.textDecoration = st.underline ? 'underline' : 'none';
+    input.style.fontFamily = JmindCore.getFontFamilyCss(st.fontFamily);
   }
 
   // ---------- 可见节点顺序（用于键盘导航） ----------
@@ -110,6 +140,7 @@ const JmindOutline = (function () {
     const input = document.createElement('input');
     input.className = 'outline-input';
     input.value = node.text || '';
+    applyInputStyle(input, node);
     textEl.replaceWith(input);
     input.focus();
     input.select();
@@ -125,11 +156,12 @@ const JmindOutline = (function () {
       }
       input.remove();
       row.classList.remove('editing');
-      // 重新放回文本节点并重渲染选中态
+      // 重新放回文本节点并重渲染选中态与字体样式
       const newText = document.createElement('span');
       newText.className = 'outline-text';
       newText.textContent = node.text || '';
       input.replaceWith(newText);
+      applyRowStyle(row, node);
       editingRow = null;
     };
 
@@ -156,6 +188,7 @@ const JmindOutline = (function () {
       textEl.className = 'outline-text';
       textEl.textContent = (node && node.text) || '';
       input.replaceWith(textEl);
+      applyRowStyle(editingRow, node);
       editingRow.classList.remove('editing');
     }
     editingRow = null;
@@ -220,17 +253,154 @@ const JmindOutline = (function () {
     }
   }
 
+  // ---------- 拖拽排序 ----------
+  function isDescendant(ancestorId, nodeId) {
+    let cur = nodeId;
+    while (cur) {
+      if (cur === ancestorId) return true;
+      const p = JmindCore.getNodeParent(cur);
+      cur = p ? p.id : null;
+    }
+    return false;
+  }
+
+  function ensureIndicators() {
+    if (dropLine) return;
+    dropLine = document.createElement('div');
+    dropLine.className = 'outline-drop-line';
+    dropBox = document.createElement('div');
+    dropBox.className = 'outline-drop-box';
+    panel.appendChild(dropLine);
+    panel.appendChild(dropBox);
+  }
+
+  function hideDropIndicators() {
+    if (dropLine) dropLine.style.display = 'none';
+    if (dropBox) dropBox.style.display = 'none';
+    dragTarget = null;
+  }
+
+  function updateDropIndicator(e) {
+    const mindMap = JmindCore.getMindMap();
+    if (!mindMap || !dragState) return;
+    const hitItem = e.target.closest('.outline-item');
+    const targetId = hitItem ? hitItem.dataset.id : null;
+    if (!targetId || targetId === dragState.nodeId || isDescendant(dragState.nodeId, targetId)) {
+      hideDropIndicators();
+      return;
+    }
+    const row = hitItem.querySelector('.outline-row');
+    if (!row) { hideDropIndicators(); return; }
+    const r = row.getBoundingClientRect();
+    const p = panel.getBoundingClientRect();
+    const top = r.top - p.top + panel.scrollTop;
+    const h = r.height;
+    let position;
+    if (e.clientY < r.top + h * 0.3) position = 'before';
+    else if (e.clientY > r.bottom - h * 0.3) position = 'after';
+    else position = 'child';
+    if (targetId === mindMap.id && position !== 'child') position = 'child'; // 根节点只能作为子节点目标
+    dragTarget = { nodeId: targetId, position };
+
+    ensureIndicators();
+    if (position === 'child') {
+      dropLine.style.display = 'none';
+      dropBox.style.display = 'block';
+      dropBox.style.top = (top + 2) + 'px';
+      dropBox.style.height = (h - 4) + 'px';
+    } else {
+      dropBox.style.display = 'none';
+      dropLine.style.display = 'block';
+      dropLine.style.top = (position === 'before' ? top : top + h) + 'px';
+    }
+  }
+
+  function doDrop() {
+    if (!dragTarget || !dragState) return;
+    const dragId = dragState.nodeId;
+    const targetId = dragTarget.nodeId;
+    const position = dragTarget.position;
+    let ok = false;
+    if (position === 'child') {
+      const t = JmindCore.getNodeById(targetId);
+      const cnt = t && t.node.children ? t.node.children.length : 0;
+      ok = JmindCore.moveNode(dragId, targetId, cnt);
+    } else {
+      const tp = JmindCore.getNodeParent(targetId);
+      if (tp) {
+        let ni = position === 'before' ? JmindCore.getNodeIndex(targetId, tp) : JmindCore.getNodeIndex(targetId, tp) + 1;
+        const dp = JmindCore.getNodeParent(dragId);
+        if (dp && dp.id === tp.id) {
+          const oi = JmindCore.getNodeIndex(dragId, tp);
+          if (oi < ni) ni--;
+        }
+        ok = JmindCore.moveNode(dragId, tp.id, ni);
+      }
+    }
+    if (ok) {
+      JmindRenderer.setSelected(dragId);
+      if (onChange) onChange();
+    }
+  }
+
+  function cleanupDrag() {
+    if (dragState && dragState.row) dragState.row.classList.remove('dragging');
+    dragState = null;
+    hideDropIndicators();
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onDragUp);
+    document.body.style.cursor = '';
+  }
+
+  function onDragMove(e) {
+    if (!dragState) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (!dragState.active && Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
+      dragState.active = true;
+      dragState.row.classList.add('dragging');
+      document.body.style.cursor = 'move';
+      ensureIndicators();
+    }
+    if (dragState.active) updateDropIndicator(e);
+  }
+
+  function onDragUp(e) {
+    if (!dragState) return;
+    const wasActive = dragState.active;
+    if (wasActive) {
+      updateDropIndicator(e);
+      doDrop();
+      justDragged = true;
+      setTimeout(() => { justDragged = false; }, 0);
+    }
+    cleanupDrag();
+  }
+
   // ---------- 事件 ----------
   function bindEvents() {
     if (!panel) return;
     panel.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
       // 行内编辑时点击面板外其他位置：提交当前编辑（不阻止冒泡到 document 的收起逻辑）
       if (editingRow && !e.target.closest('.outline-input')) {
         stopEdit(true);
       }
+      // 开始拖拽候选：点击行（非箭头、非输入框、非根节点）
+      const row = e.target.closest('.outline-row');
+      if (!row || e.target.closest('.outline-arrow') || e.target.closest('.outline-input')) return;
+      const item = row.closest('.outline-item');
+      if (!item) return;
+      const nodeId = item.dataset.id;
+      if (!nodeId || nodeId === JmindCore.getMindMap()?.id) return;
+      dragState = { nodeId, startX: e.clientX, startY: e.clientY, row, active: false };
+      e.preventDefault(); // 阻止拖拽时的文本选择
+      document.addEventListener('mousemove', onDragMove);
+      document.addEventListener('mouseup', onDragUp);
     });
 
     panel.addEventListener('click', (e) => {
+      if (justDragged) { justDragged = false; return; }
       const item = e.target.closest('.outline-item');
       if (!item) {
         // 点击空白区域：取消选中
