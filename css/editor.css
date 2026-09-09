@@ -183,6 +183,67 @@ body { overflow: hidden; height: 100vh; width: 100vw; user-select: none; -webkit
 .color-swatch:hover { transform: scale(1.15); }
 .color-swatch.selected { border-color: var(--text); }
 
+/* 字体样式面板 */
+.font-panel {
+  display: none;
+  padding: 10px 16px;
+  gap: 10px;
+  flex-direction: column;
+}
+
+.font-panel.active { display: flex; }
+
+.font-toggles { display: flex; gap: 6px; }
+
+.font-btn {
+  width: 34px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 15px;
+  font-family: var(--font);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.font-btn:hover { background: var(--border-light); }
+.font-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.font-btn-bold { font-weight: 700; }
+.font-btn-italic { font-style: italic; }
+.font-btn-underline { text-decoration: underline; }
+
+.font-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.font-row select {
+  flex: 1;
+  max-width: 130px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--font);
+  outline: none;
+}
+
 @keyframes menuIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
 /* ---------- 拖拽指示 ---------- */
@@ -399,6 +460,33 @@ body { overflow: hidden; height: 100vh; width: 100vw; user-select: none; -webkit
   padding: 3px 8px;
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* ---------- 大纲拖拽 ---------- */
+.outline-row.dragging { opacity: 0.45; }
+
+.outline-drop-line,
+.outline-drop-box {
+  position: absolute;
+  pointer-events: none;
+  z-index: 6;
+  display: none;
+}
+
+.outline-drop-line {
+  left: 26px;
+  right: 10px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.outline-drop-box {
+  left: 26px;
+  right: 10px;
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 /* ============================================================
