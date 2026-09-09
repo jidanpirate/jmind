@@ -99,6 +99,36 @@
             <div class="menu-item" data-action="edit">✏️ <span data-i18n="menu_edit_text">编辑文本</span></div>
             <div class="menu-item" data-action="change-color">🎨 <span data-i18n="menu_change_color">更改颜色</span></div>
             <div class="color-picker" id="color-picker"></div>
+            <div class="menu-item" data-action="font-style">🅰️ <span data-i18n="menu_font_style">字体样式</span></div>
+            <div class="font-panel" id="font-panel">
+                <div class="font-toggles">
+                    <button type="button" class="font-btn font-btn-bold" data-font-prop="bold" data-i18n-title="font_bold" title="粗体">B</button>
+                    <button type="button" class="font-btn font-btn-italic" data-font-prop="italic" data-i18n-title="font_italic" title="斜体">I</button>
+                    <button type="button" class="font-btn font-btn-underline" data-font-prop="underline" data-i18n-title="font_underline" title="下划线">U</button>
+                </div>
+                <label class="font-row">
+                    <span data-i18n="font_size">字号</span>
+                    <select id="font-size-select">
+                        <option value="12">12</option>
+                        <option value="14" selected>14</option>
+                        <option value="16">16</option>
+                        <option value="18">18</option>
+                        <option value="20">20</option>
+                        <option value="24">24</option>
+                        <option value="32">32</option>
+                    </select>
+                </label>
+                <label class="font-row">
+                    <span data-i18n="font_family">字体</span>
+                    <select id="font-family-select">
+                        <option value="default" data-i18n="font_family_default">默认</option>
+                        <option value="song" data-i18n="font_family_song">宋体</option>
+                        <option value="hei" data-i18n="font_family_hei">黑体</option>
+                        <option value="kai" data-i18n="font_family_kai">楷体</option>
+                        <option value="mono" data-i18n="font_family_mono">等宽</option>
+                    </select>
+                </label>
+            </div>
             <div class="menu-separator"></div>
             <div class="menu-item" data-action="toggle-collapse">🔽 <span data-i18n="menu_toggle_collapse">折叠/展开</span></div>
             <div class="menu-item" data-action="copy">📋 <span data-i18n="menu_copy">复制节点</span></div>
