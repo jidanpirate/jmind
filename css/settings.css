@@ -246,6 +246,119 @@ body {
   margin-bottom: 4px;
 }
 
+/* 导入数据模态框 */
+.import-box {
+  max-width: 440px;
+}
+
+.import-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 20px;
+}
+
+.import-drop-zone:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.import-drop-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: scale(1.02);
+}
+
+.import-drop-icon {
+  font-size: 36px;
+  margin-bottom: 10px;
+  opacity: 0.7;
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.import-drop-zone:hover .import-drop-icon {
+  transform: scale(1.15) translateY(-3px);
+}
+
+.import-drop-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.import-drop-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.import-file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.import-file-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.import-file-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.import-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+  word-break: break-all;
+}
+
+.import-file-size {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.import-file-remove {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.import-file-remove:hover {
+  background: rgba(231,76,60,0.15);
+  color: var(--danger);
+}
+
+.import-box .dialog-btn-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.import-box .dialog-btn-confirm:disabled:hover {
+  box-shadow: none;
+}
+
 @media (max-width: 480px) {
   .settings-container { padding: 24px; }
   .actions { flex-direction: column; }
