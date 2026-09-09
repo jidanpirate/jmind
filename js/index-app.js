@@ -1,149 +1,141 @@
 /**
- * jmind - 首页应用逻辑
- * 最近文件列表、新建、导入、删除
+ * jmind - Homepage Application
+ * 首页逻辑：最近文件列表、新建、导入、删除
  */
 (function () {
-    'use strict';
+  'use strict';
 
-    const L = (key) => (typeof JmindI18n !== 'undefined' ? JmindI18n.t(key) : key);
+  const fileListEl = document.getElementById('file-list');
+  const fileCountEl = document.getElementById('file-count');
+  const btnNew = document.getElementById('btn-new');
+  const btnImport = document.getElementById('btn-import');
+  const fileInput = document.getElementById('file-input');
+  const L = JmindI18n.t;
 
-    // ---------- Toast ----------
-    let toastTimer = null;
-    function showToast(msg, type) {
-        const toast = document.getElementById('toast');
-        if (!toast) return;
-        toast.textContent = msg;
-        toast.className = 'toast show' + (type ? ' ' + type : '');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => { toast.className = 'toast'; }, 2200);
+  // 应用主题（外观模式 × 主题色）
+  JmindStorage.applyTheme();
+  JmindI18n.apply();
+
+  // 加载最近文件
+  function loadRecentFiles() {
+    const files = JmindStorage.getRecentFiles();
+    if (fileCountEl) {
+      fileCountEl.textContent = L('files_count', { n: files.length });
     }
+    if (files.length === 0) {
+      fileListEl.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">🗺️</div>
+          <div class="empty-text">${L('empty_text')}</div>
+          <button class="btn" id="empty-new">${L('new_map')}</button>
+        </div>`;
+      document.getElementById('empty-new')?.addEventListener('click', createNewFile);
+      return;
+    }
+    fileListEl.innerHTML = '';
+    files.forEach(file => {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      const nodeCount = file.nodeCount ? ` · ${file.nodeCount}${L('nodes_suffix')}` : '';
+      item.innerHTML = `
+        <div class="file-info">
+          <div class="file-name">${escapeHtml(file.name || L('untitled'))}</div>
+          <div class="file-meta">${formatDate(file.modifiedAt)}${nodeCount}</div>
+        </div>
+        <div class="file-actions">
+          <button class="icon-btn" data-action="open" title="${L('open')}">📂</button>
+          <button class="icon-btn danger" data-action="delete" title="${L('delete')}">🗑️</button>
+        </div>`;
+      item.addEventListener('click', (e) => {
+        const action = e.target.closest('[data-action]')?.dataset.action;
+        if (action === 'delete') {
+          e.stopPropagation();
+          deleteFile(file.id);
+        } else {
+          openFile(file.id);
+        }
+      });
+      fileListEl.appendChild(item);
+    });
+  }
 
-    // ---------- 新建导图 ----------
-    document.getElementById('btn-new').addEventListener('click', () => {
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function formatDate(timestamp) {
+    if (!timestamp) return '';
+    const d = new Date(timestamp);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return L('just_now');
+    if (diff < 3600000) return L('minutes_ago', { n: Math.floor(diff / 60000) });
+    if (diff < 86400000) return L('hours_ago', { n: Math.floor(diff / 3600000) });
+    if (diff < 604800000) return L('days_ago', { n: Math.floor(diff / 86400000) });
+    return d.toLocaleDateString('zh-CN');
+  }
+
+  function deleteFile(id) {
+    JmindDialog.confirm({
+      title: L('delete'),
+      message: L('confirm_delete_file'),
+      confirmText: L('delete'),
+      type: 'danger',
+      icon: '🗑️',
+      onConfirm: () => {
+        JmindStorage.deleteFile(id);
+        loadRecentFiles();
+      }
+    });
+  }
+
+  function openFile(id) {
+    JmindStorage.setEditId(id);
+    window.location.href = 'editor.html';
+  }
+
+  function createNewFile() {
+    JmindStorage.setEditId('new');
+    window.location.href = 'editor.html';
+  }
+
+  function importFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!data.root) throw new Error(L('invalid_file'));
         const id = JmindStorage.createFileId();
+        JmindStorage.saveFile(id, data);
         JmindStorage.setEditId(id);
         window.location.href = 'editor.html';
+      } catch (err) {
+        JmindDialog.alert({
+          title: L('import_failed'),
+          message: err.message,
+          type: 'danger',
+          icon: '⚠️'
+        });
+      }
+    };
+    reader.onerror = () => JmindDialog.alert({
+      title: L('read_failed'),
+      type: 'danger',
+      icon: '⚠️'
     });
+    reader.readAsText(file);
+  }
 
-    // ---------- 导入文件 ----------
-    const fileInput = document.getElementById('file-input');
-    document.getElementById('btn-import').addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) importFile(file);
-        fileInput.value = '';
-    });
+  // 事件绑定
+  btnNew.addEventListener('click', createNewFile);
+  btnImport.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) importFile(e.target.files[0]);
+    e.target.value = '';
+  });
 
-    function importFile(file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = JSON.parse(e.target.result);
-                if (!data.root) throw new Error(L('invalid_file'));
-                const id = JmindStorage.createFileId();
-                JmindStorage.saveFile(id, data);
-                JmindStorage.setEditId(id);
-                window.location.href = 'editor.html';
-            } catch (err) {
-                JmindDialog.alert({
-                    title: L('import_failed'),
-                    message: err.message,
-                    type: 'danger',
-                    icon: '⚠️'
-                });
-            }
-        };
-        reader.onerror = () => JmindDialog.alert({
-            title: L('read_failed'),
-            type: 'danger',
-            icon: '⚠️'
-        });
-        reader.readAsText(file);
-    }
-
-    // ---------- 最近文件列表 ----------
-    function loadRecentFiles() {
-        const list = document.getElementById('file-list');
-        const countEl = document.getElementById('file-count');
-        const files = JmindStorage.getRecentFiles();
-
-        countEl.textContent = files.length + ' ' + L('files');
-
-        if (files.length === 0) {
-            list.innerHTML = `<div class="empty">${L('no_files')}</div>`;
-            return;
-        }
-
-        list.innerHTML = files.map(f => {
-            const name = f.name || L('untitled');
-            const time = f.updatedAt ? new Date(f.updatedAt).toLocaleString() : '';
-            return `
-                <div class="file-card" data-id="${f.id}">
-                    <div class="file-info">
-                        <div class="file-name">${escapeHtml(name)}</div>
-                        <div class="file-time">${time}</div>
-                    </div>
-                    <div class="file-actions">
-                        <button class="file-btn file-btn-open" data-id="${f.id}" data-i18n="open">打开</button>
-                        <button class="file-btn file-btn-delete" data-id="${f.id}" data-i18n="delete">删除</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // 绑定事件
-        list.querySelectorAll('.file-btn-open').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const id = btn.dataset.id;
-                JmindStorage.setEditId(id);
-                window.location.href = 'editor.html';
-            });
-        });
-
-        list.querySelectorAll('.file-btn-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                deleteFile(btn.dataset.id);
-            });
-        });
-
-        // 点击卡片打开
-        list.querySelectorAll('.file-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const id = card.dataset.id;
-                JmindStorage.setEditId(id);
-                window.location.href = 'editor.html';
-            });
-        });
-    }
-
-    function deleteFile(id) {
-        const files = JmindStorage.getRecentFiles();
-        const file = files.find(f => f.id === id);
-        const name = file?.name || L('untitled');
-        JmindDialog.confirm({
-            title: L('delete'),
-            message: L('confirm_delete_file') + (name ? `\n「${name}」` : ''),
-            confirmText: L('delete'),
-            type: 'danger',
-            icon: '🗑️',
-            onConfirm: () => {
-                JmindStorage.deleteFile(id);
-                loadRecentFiles();
-            }
-        });
-    }
-
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    // ---------- 初始化 ----------
-    if (typeof JmindI18n !== 'undefined') {
-        JmindI18n.apply(document);
-    }
-    loadRecentFiles();
+  // 初始化
+  loadRecentFiles();
 })();
