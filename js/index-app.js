@@ -16,9 +16,91 @@
   JmindStorage.applyTheme();
   JmindI18n.apply();
 
+  // ---------- 创建欢迎文件（首次使用时自动创建） ----------
+  function createWelcomeFile() {
+    const now = Date.now();
+    const welcomeData = {
+      format: 'jmind',
+      version: '1.1',
+      created: new Date().toISOString(),
+      modified: new Date().toISOString(),
+      root: {
+        id: 'node-welcome-' + now,
+        text: '欢迎使用 jmind',
+        color: '#E8825A',
+        collapsed: false,
+        fontSize: 18,
+        bold: true,
+        italic: false,
+        underline: false,
+        fontFamily: 'default',
+        children: [
+          {
+            id: 'node-welcome-1-' + now,
+            text: '快速开始',
+            color: '#5B9BD5',
+            collapsed: false,
+            fontSize: 14,
+            bold: false,
+            italic: false,
+            underline: false,
+            fontFamily: 'default',
+            children: [
+              { id: 'node-welcome-1-1-' + now, text: '双击节点编辑文字', color: '#FFC000', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] },
+              { id: 'node-welcome-1-2-' + now, text: 'Tab 添加子节点', color: '#7B68EE', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] },
+              { id: 'node-welcome-1-3-' + now, text: 'Enter 添加兄弟节点', color: '#FF6B6B', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] }
+            ]
+          },
+          {
+            id: 'node-welcome-2-' + now,
+            text: '实用功能',
+            color: '#70AD47',
+            collapsed: false,
+            fontSize: 14,
+            bold: false,
+            italic: false,
+            underline: false,
+            fontFamily: 'default',
+            children: [
+              { id: 'node-welcome-2-1-' + now, text: '拖拽节点调整结构', color: '#4ECDC4', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] },
+              { id: 'node-welcome-2-2-' + now, text: '大纲模式快速编辑', color: '#FF9F43', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] },
+              { id: 'node-welcome-2-3-' + now, text: '工具栏字体样式', color: '#A29BFE', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] },
+              { id: 'node-welcome-2-4-' + now, text: '导出为 PNG 图片', color: '#FD79A8', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] }
+            ]
+          },
+          {
+            id: 'node-welcome-3-' + now,
+            text: '快捷键',
+            color: '#00B894',
+            collapsed: false,
+            fontSize: 14,
+            bold: false,
+            italic: false,
+            underline: false,
+            fontFamily: 'default',
+            children: [
+              { id: 'node-welcome-3-1-' + now, text: 'Ctrl+B 加粗', color: '#0984E3', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] },
+              { id: 'node-welcome-3-2-' + now, text: 'Ctrl+I 斜体', color: '#6C5CE7', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] },
+              { id: 'node-welcome-3-3-' + now, text: 'Ctrl+U 下划线', color: '#E17055', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] },
+              { id: 'node-welcome-3-4-' + now, text: 'Ctrl+Shift+O 大纲', color: '#00CEC9', collapsed: false, fontSize: 14, bold: false, italic: false, underline: false, fontFamily: 'default', children: [] }
+            ]
+          }
+        ]
+      }
+    };
+    const id = JmindStorage.createFileId();
+    JmindStorage.saveFile(id, welcomeData);
+    return id;
+  }
+
   // 加载最近文件
   function loadRecentFiles() {
-    const files = JmindStorage.getRecentFiles();
+    let files = JmindStorage.getRecentFiles();
+    // 首次使用：自动创建欢迎文件
+    if (files.length === 0) {
+      createWelcomeFile();
+      files = JmindStorage.getRecentFiles();
+    }
     if (fileCountEl) {
       fileCountEl.textContent = L('files_count', { n: files.length });
     }

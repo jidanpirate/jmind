@@ -8,6 +8,8 @@ const JmindOutline = (function () {
 
   let panel = null;
   let onChange = null;   // 数据变更回调（由编辑器注入：markDirty + refreshView）
+  let onIndent = null;   // 缩进回调（添加子节点）
+  let onOutdent = null;  // 后退回调（提升层级）
   let editingRow = null; // 当前行内编辑的 row 元素
 
   // ---------- 拖拽排序状态 ----------
@@ -22,6 +24,8 @@ const JmindOutline = (function () {
     panel = el;
     if (handlers) {
       if (handlers.onChange) onChange = handlers.onChange;
+      if (handlers.onIndent) onIndent = handlers.onIndent;
+      if (handlers.onOutdent) onOutdent = handlers.onOutdent;
     }
     bindEvents();
   }
@@ -29,15 +33,44 @@ const JmindOutline = (function () {
   // ---------- 渲染 ----------
   function render(selectedId) {
     if (!panel) return;
+    const scrollTop = panel.scrollTop; // 保存滚动位置
     const mindMap = JmindCore.getMindMap();
     const collapsed = JmindCore.getCollapsedSet();
     panel.innerHTML = '';
     if (!mindMap) return;
 
+    // 渲染大纲工具栏（缩进/后退按钮）
+    renderToolbar();
+
     const list = document.createElement('ul');
     list.className = 'outline-list';
     list.appendChild(buildRow(mindMap, collapsed, selectedId, 0));
     panel.appendChild(list);
+
+    // 恢复滚动位置（避免重新渲染后跳到顶部）
+    requestAnimationFrame(() => {
+      if (panel) panel.scrollTop = scrollTop;
+    });
+  }
+
+  // ---------- 大纲工具栏（缩进/后退按钮） ----------
+  function renderToolbar() {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'outline-toolbar';
+    toolbar.innerHTML =
+      '<button type="button" class="outline-tool-btn" data-outline-action="indent" title="缩进 (Tab)">⇥ 缩进</button>' +
+      '<button type="button" class="outline-tool-btn" data-outline-action="outdent" title="后退 (Shift+Tab)">⇤ 后退</button>';
+    toolbar.addEventListener('mousedown', (e) => e.stopPropagation());
+    toolbar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.outline-tool-btn');
+      if (!btn) return;
+      const action = btn.dataset.outlineAction;
+      const selected = JmindRenderer.getSelected();
+      if (!selected) return;
+      if (action === 'indent' && onIndent) onIndent(selected);
+      else if (action === 'outdent' && onOutdent) onOutdent(selected);
+    });
+    panel.appendChild(toolbar);
   }
 
   function buildRow(node, collapsed, selectedId, depth) {
@@ -142,8 +175,11 @@ const JmindOutline = (function () {
     input.value = node.text || '';
     applyInputStyle(input, node);
     textEl.replaceWith(input);
-    input.focus();
+    // 防止 focus 时浏览器自动滚动导致位置跳动
+    const scrollTop = panel.scrollTop;
+    input.focus({ preventScroll: true });
     input.select();
+    panel.scrollTop = scrollTop;
 
     let finished = false;
     const finish = (save) => {
@@ -387,7 +423,8 @@ const JmindOutline = (function () {
       if (editingRow && !e.target.closest('.outline-input')) {
         stopEdit(true);
       }
-      // 开始拖拽候选：点击行（非箭头、非输入框、非根节点）
+      // 开始拖拽候选：点击行（非箭头、非输入框、非根节点、非工具栏）
+      if (e.target.closest('.outline-toolbar')) return;
       const row = e.target.closest('.outline-row');
       if (!row || e.target.closest('.outline-arrow') || e.target.closest('.outline-input')) return;
       const item = row.closest('.outline-item');
@@ -404,6 +441,8 @@ const JmindOutline = (function () {
 
     panel.addEventListener('click', (e) => {
       if (justDragged) { justDragged = false; return; }
+      // 点击工具栏不处理选中
+      if (e.target.closest('.outline-toolbar')) return;
       const item = e.target.closest('.outline-item');
       if (!item) {
         // 点击空白区域：取消选中
@@ -431,6 +470,7 @@ const JmindOutline = (function () {
     });
 
     panel.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.outline-toolbar')) return;
       const row = e.target.closest('.outline-row');
       if (!row) return;
       const item = row.closest('.outline-item');
