@@ -248,7 +248,7 @@ body { overflow: hidden; height: 100vh; width: 100vw; user-select: none; -webkit
 
 /* ---------- 浮动字体面板 ---------- */
 .font-toolbar {
-  position: absolute;
+  position: fixed;
   z-index: 35;
   display: none;
   align-items: center;

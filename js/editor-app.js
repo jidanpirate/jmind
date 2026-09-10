@@ -203,12 +203,19 @@
     fontToolbarVisible = true;
     fontToolbar.classList.add('active');
     syncFontToolbar();
+    // 字体工具栏使用 position:fixed，直接基于视口坐标定位（按钮在画布容器外的工具栏中）
     const fontBtn = document.getElementById('btn-font');
     if (fontBtn) {
       const rect = fontBtn.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      fontToolbar.style.left = (rect.left - containerRect.left) + 'px';
-      fontToolbar.style.top = (rect.bottom - containerRect.top + 6) + 'px';
+      let left = rect.left;
+      let top = rect.bottom + 6;
+      const toolbarW = fontToolbar.offsetWidth;
+      if (toolbarW > 0) {
+        if (left + toolbarW > window.innerWidth - 8) left = window.innerWidth - toolbarW - 8;
+        left = Math.max(8, left);
+      }
+      fontToolbar.style.left = left + 'px';
+      fontToolbar.style.top = top + 'px';
     }
   }
 
@@ -993,11 +1000,13 @@
   function isTouchOnUI(clientX, clientY) {
     const el = document.elementFromPoint(clientX, clientY);
     if (!el) return false;
-    return !!(el.closest('.node-popup') || el.closest('.font-toolbar') || el.closest('.search-bar') || el.closest('.context-menu') || el.closest('.node-editor') || el.closest('.outline-toolbar') || el.closest('.drop-indicator'));
+    return !!(el.closest('.node-popup') || el.closest('.font-toolbar') || el.closest('.search-bar') || el.closest('.context-menu') || el.closest('.node-editor') || el.closest('.outline-toolbar') || el.closest('.outline-panel') || el.closest('.drop-indicator'));
   }
 
   function initTouch() {
     container.addEventListener('touchstart', (e) => {
+      // 大纲模式下不处理画布触摸，避免干扰大纲面板的点击/选中
+      if (outlineMode) return;
       if (editingNodeId && editorInput) {
         const touch = e.touches[0];
         if (!editorInput.contains(document.elementFromPoint(touch.clientX, touch.clientY))) stopEditing(true);
