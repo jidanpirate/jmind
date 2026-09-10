@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = '1.3.0';
+  const APP_VERSION = '1.4.2';
   const L = JmindI18n.t;
 
   // 应用当前主题（外观模式 × 主题色）
