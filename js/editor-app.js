@@ -26,6 +26,13 @@
   const fontPanel = document.getElementById('font-panel');
   const fontSizeSelect = document.getElementById('font-size-select');
   const fontFamilySelect = document.getElementById('font-family-select');
+  // 浮动字体面板
+  const fontToolbar = document.getElementById('font-toolbar');
+  const fontToolSize = document.getElementById('font-tool-size');
+  const fontToolFamily = document.getElementById('font-tool-family');
+  const fontToolColorBtn = document.getElementById('font-tool-color-btn');
+  const fontToolColorPicker = document.getElementById('font-tool-color-picker');
+  const fontToolColorBar = document.getElementById('font-tool-color-bar');
 
   // 翻译函数
   const L = JmindI18n.t;
@@ -47,6 +54,7 @@
   let searchResultIds = [];
   let searchIndex = -1;
   let outlineMode = false;
+  let fontToolbarVisible = false;
 
   // ---------- 初始化模块 ----------
   const ctx = JmindRenderer.init(canvas, container);
@@ -59,7 +67,9 @@
   // ---------- 大纲视图初始化 ----------
   if (outlinePanel) {
     JmindOutline.init(outlinePanel, {
-      onChange: () => { markDirty(); refreshView(); }
+      onChange: () => { markDirty(); refreshView(); },
+      onIndent: (nodeId) => doAddChild(nodeId),
+      onOutdent: (nodeId) => doOutdent(nodeId)
     });
   }
 
@@ -179,12 +189,125 @@
     }
     updateStats();
     updateNodePopup();
+    if (fontToolbarVisible) syncFontToolbar();
+  }
+
+  // ---------- 浮动字体面板 ----------
+  function showFontToolbar() {
+    if (!fontToolbar) return;
+    const selected = JmindRenderer.getSelected();
+    if (!selected) {
+      showToast(L('toast_pick_node'), 'warning');
+      return;
+    }
+    fontToolbarVisible = true;
+    fontToolbar.classList.add('active');
+    syncFontToolbar();
+    // 定位到工具栏字体按钮下方
+    const fontBtn = document.getElementById('btn-font');
+    if (fontBtn) {
+      const rect = fontBtn.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      fontToolbar.style.left = (rect.left - containerRect.left) + 'px';
+      fontToolbar.style.top = (rect.bottom - containerRect.top + 6) + 'px';
+    }
+  }
+
+  function hideFontToolbar() {
+    fontToolbarVisible = false;
+    if (fontToolbar) fontToolbar.classList.remove('active');
+    if (fontToolColorPicker) fontToolColorPicker.classList.remove('active');
+  }
+
+  function toggleFontToolbar() {
+    if (fontToolbarVisible) hideFontToolbar();
+    else showFontToolbar();
+  }
+
+  function syncFontToolbar() {
+    if (!fontToolbar) return;
+    const node = getSelectedNode();
+    if (!node) return;
+    const st = JmindCore.getNodeStyle(node);
+    fontToolbar.querySelectorAll('.font-tool-btn').forEach(btn => {
+      btn.classList.toggle('active', !!st[btn.dataset.fontProp]);
+    });
+    if (fontToolSize) fontToolSize.value = String(st.fontSize);
+    if (fontToolFamily) fontToolFamily.value = st.fontFamily;
+    if (fontToolColorBar) fontToolColorBar.style.background = node.color || '#5B9BD5';
+  }
+
+  function applyFontToolbarStyle(patch) {
+    const selected = JmindRenderer.getSelected();
+    if (!selected) return;
+    JmindCore.updateNodeStyle(selected, patch);
+    refreshView();
+    markDirty();
+    syncFontToolbar();
+  }
+
+  function buildFontToolbar() {
+    if (!fontToolbar) return;
+    // 加粗/斜体/下划线按钮
+    fontToolbar.querySelectorAll('.font-tool-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const node = getSelectedNode();
+        if (!node) return;
+        const prop = btn.dataset.fontProp;
+        const st = JmindCore.getNodeStyle(node);
+        applyFontToolbarStyle({ [prop]: !st[prop] });
+      });
+    });
+    // 字号
+    if (fontToolSize) {
+      fontToolSize.addEventListener('change', () => applyFontToolbarStyle({ fontSize: Number(fontToolSize.value) }));
+      fontToolSize.addEventListener('click', (e) => e.stopPropagation());
+    }
+    // 字体家族
+    if (fontToolFamily) {
+      fontToolFamily.addEventListener('change', () => applyFontToolbarStyle({ fontFamily: fontToolFamily.value }));
+      fontToolFamily.addEventListener('click', (e) => e.stopPropagation());
+    }
+    // 文字颜色
+    if (fontToolColorBtn && fontToolColorPicker) {
+      buildFontToolColorPicker();
+      fontToolColorBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fontToolColorPicker.classList.toggle('active');
+      });
+    }
+  }
+
+  function buildFontToolColorPicker() {
+    if (!fontToolColorPicker) return;
+    fontToolColorPicker.innerHTML = '';
+    const colors = [...JmindCore.getPalette(), JmindCore.getRootColor(), '#34495e', '#e67e22', '#1abc9c', '#2c3e50', '#8e44ad', '#16a085'];
+    colors.forEach(color => {
+      const swatch = document.createElement('div');
+      swatch.className = 'font-tool-color-swatch';
+      swatch.style.background = color;
+      swatch.dataset.color = color;
+      swatch.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const selected = JmindRenderer.getSelected();
+        if (selected) {
+          JmindCore.updateNodeColor(selected, color);
+          refreshView();
+          markDirty();
+          syncFontToolbar();
+        }
+        fontToolColorPicker.classList.remove('active');
+      });
+      fontToolColorPicker.appendChild(swatch);
+    });
   }
 
   // ---------- 大纲视图切换 ----------
   function toggleOutlineMode() {
     if (editingNodeId) stopEditing(true);
     if (JmindOutline.isEditing()) JmindOutline.stopEdit(true);
+    hideFontToolbar();
     outlineMode = !outlineMode;
     container.classList.toggle('outline-mode', outlineMode);
     if (outlineBtn) outlineBtn.classList.toggle('active', outlineMode);
@@ -267,6 +390,7 @@
     if (!node) return;
     editingNodeId = nodeId;
     hideNodePopup();
+    hideFontToolbar();
     if (editorInput) editorInput.remove();
     editorInput = document.createElement('textarea');
     editorInput.className = 'node-editor';
@@ -804,7 +928,7 @@
 
   // ---------- 键盘快捷键 ----------
   function onKeyDown(e) {
-    if (e.target === editorInput || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    if (e.target === editorInput || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
       if (e.key === 'Escape' && e.target === searchInput) {
         closeSearch();
       }
@@ -823,6 +947,10 @@
     if (ctrl && key === 'c') { e.preventDefault(); doCopy(); return; }
     if (ctrl && key === 'v') { e.preventDefault(); doPaste(); return; }
     if (ctrl && key === 'd') { e.preventDefault(); doDuplicate(); return; }
+    // 字体快捷键
+    if (ctrl && (key === 'b' || key === 'B')) { e.preventDefault(); if (selected) { const st = JmindCore.getNodeStyle(getSelectedNode()); applyFontToolbarStyle({ bold: !st.bold }); } return; }
+    if (ctrl && (key === 'i' || key === 'I')) { e.preventDefault(); if (selected) { const st = JmindCore.getNodeStyle(getSelectedNode()); applyFontToolbarStyle({ italic: !st.italic }); } return; }
+    if (ctrl && (key === 'u' || key === 'U')) { e.preventDefault(); if (selected) { const st = JmindCore.getNodeStyle(getSelectedNode()); applyFontToolbarStyle({ underline: !st.underline }); } return; }
 
     // 大纲模式方向键导航
     if (outlineMode && (key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight')) {
@@ -857,6 +985,7 @@
     } else if (key === 'Escape') {
       contextMenu.classList.remove('active');
       if (searchBar.classList.contains('active')) closeSearch();
+      hideFontToolbar();
       stopEditing(false);
       refreshView();
     } else if (key === '+' || key === '=') {
@@ -1007,6 +1136,12 @@
       if (selected) startEditing(selected);
       else showToast(L('toast_pick_node'), 'warning');
     });
+    // 字体按钮
+    const fontBtn = document.getElementById('btn-font');
+    if (fontBtn) fontBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFontToolbar();
+    });
     document.getElementById('btn-delete').addEventListener('click', () => {
       const selected = JmindRenderer.getSelected();
       if (selected) doDelete(selected);
@@ -1130,6 +1265,10 @@
         if (colorPicker) colorPicker.classList.remove('active');
         if (fontPanel) fontPanel.classList.remove('active');
       }
+      // 点击浮动字体面板外部关闭
+      if (fontToolbar && !fontToolbar.contains(e.target) && !e.target.closest('#btn-font')) {
+        hideFontToolbar();
+      }
     });
     document.addEventListener('keydown', onKeyDown);
     window.addEventListener('resize', () => refreshView());
@@ -1140,6 +1279,7 @@
   function init() {
     buildColorPicker();
     buildFontPanel();
+    buildFontToolbar();
     loadFile();
     bindToolbar();
     initTouch();
