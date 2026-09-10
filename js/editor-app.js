@@ -108,7 +108,7 @@
   function updateTitle() {
     const mindMap = JmindCore.getMindMap();
     const name = mindMap?.text || L('untitled');
-    document.title = (isDirty ? '● ' : '') + name + L('title_suffix');
+    document.title = (isDirty ? '\u25cf ' : '') + name + L('title_suffix');
   }
 
   function scheduleAutoSave() {
@@ -203,7 +203,6 @@
     fontToolbarVisible = true;
     fontToolbar.classList.add('active');
     syncFontToolbar();
-    // 定位到工具栏字体按钮下方
     const fontBtn = document.getElementById('btn-font');
     if (fontBtn) {
       const rect = fontBtn.getBoundingClientRect();
@@ -248,7 +247,6 @@
 
   function buildFontToolbar() {
     if (!fontToolbar) return;
-    // 加粗/斜体/下划线按钮
     fontToolbar.querySelectorAll('.font-tool-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -259,17 +257,14 @@
         applyFontToolbarStyle({ [prop]: !st[prop] });
       });
     });
-    // 字号
     if (fontToolSize) {
       fontToolSize.addEventListener('change', () => applyFontToolbarStyle({ fontSize: Number(fontToolSize.value) }));
       fontToolSize.addEventListener('click', (e) => e.stopPropagation());
     }
-    // 字体家族
     if (fontToolFamily) {
       fontToolFamily.addEventListener('change', () => applyFontToolbarStyle({ fontFamily: fontToolFamily.value }));
       fontToolFamily.addEventListener('click', (e) => e.stopPropagation());
     }
-    // 文字颜色
     if (fontToolColorBtn && fontToolColorPicker) {
       buildFontToolColorPicker();
       fontToolColorBtn.addEventListener('click', (e) => {
@@ -328,7 +323,6 @@
 
   function updateNodePopup() {
     const selectedId = JmindRenderer.getSelected();
-    // 编辑中、拖拽中、无选中时隐藏
     if (!selectedId || editingNodeId || (dragMode === 'node' && isDragging)) {
       hideNodePopup();
       return;
@@ -342,22 +336,18 @@
     const isRoot = selectedId === rootId;
     const hasChildren = node.children && node.children.length > 0;
 
-    // 按钮可见性
     nodePopup.querySelector('[data-popup-action="add-sibling"]').classList.toggle('hidden-btn', isRoot);
     nodePopup.querySelector('[data-popup-action="delete"]').classList.toggle('hidden-btn', isRoot);
     const collapseBtn = nodePopup.querySelector('[data-popup-action="toggle-collapse"]');
     collapseBtn.classList.toggle('hidden-btn', !hasChildren);
-    // 折叠/展开箭头方向
     collapseBtn.style.transform = node.collapsed ? 'rotate(180deg)' : '';
 
-    // 先显示以获取尺寸
     nodePopup.classList.add('active');
     const popupW = nodePopup.offsetWidth;
     const popupH = nodePopup.offsetHeight;
     const containerRect = container.getBoundingClientRect();
 
     let left = rect.x + rect.width / 2 - popupW / 2;
-    // 水平方向不超出容器
     left = Math.max(6, Math.min(left, containerRect.width - popupW - 6));
 
     const gap = 8;
@@ -379,7 +369,6 @@
 
   // ---------- 节点编辑 ----------
   function startEditing(nodeId) {
-    // 大纲模式下使用大纲行内编辑
     if (outlineMode) {
       JmindOutline.startEdit(nodeId);
       return;
@@ -400,7 +389,8 @@
     editorInput.style.width = Math.max(pos.width, 60) + 'px';
     editorInput.style.height = Math.max(pos.height, 36) + 'px';
     const scale = JmindRenderer.getScale();
-    editorInput.style.fontSize = (14 * scale) + 'px';
+    const editStyle = JmindCore.getNodeStyle(node);
+    editorInput.style.fontSize = (editStyle.fontSize * scale) + 'px';
     container.appendChild(editorInput);
     editorInput.focus();
     editorInput.select();
@@ -507,7 +497,6 @@
     return ok;
   }
 
-  // 大纲模式：提升层级（Shift+Tab，减少缩进）
   function doOutdent(nodeId) {
     const root = JmindCore.getMindMap();
     if (!nodeId || nodeId === root?.id) {
@@ -782,7 +771,6 @@
     if (editingNodeId && editorInput) return;
     const pos = getMousePos(e);
 
-    // 悬停检测
     if (!dragMode) {
       const hit = JmindRenderer.hitTest(pos.x, pos.y, JmindLayout.getPositions());
       JmindRenderer.setHovered(hit?.id || null);
@@ -872,7 +860,6 @@
     if (hit && hit.type === 'node') {
       startEditing(hit.id);
     } else {
-      // 后备：如果双击位置没命中节点，但有选中的节点，编辑选中节点
       const selected = JmindRenderer.getSelected();
       if (selected) startEditing(selected);
     }
@@ -947,19 +934,16 @@
     if (ctrl && key === 'c') { e.preventDefault(); doCopy(); return; }
     if (ctrl && key === 'v') { e.preventDefault(); doPaste(); return; }
     if (ctrl && key === 'd') { e.preventDefault(); doDuplicate(); return; }
-    // 字体快捷键
     if (ctrl && (key === 'b' || key === 'B')) { e.preventDefault(); if (selected) { const st = JmindCore.getNodeStyle(getSelectedNode()); applyFontToolbarStyle({ bold: !st.bold }); } return; }
     if (ctrl && (key === 'i' || key === 'I')) { e.preventDefault(); if (selected) { const st = JmindCore.getNodeStyle(getSelectedNode()); applyFontToolbarStyle({ italic: !st.italic }); } return; }
     if (ctrl && (key === 'u' || key === 'U')) { e.preventDefault(); if (selected) { const st = JmindCore.getNodeStyle(getSelectedNode()); applyFontToolbarStyle({ underline: !st.underline }); } return; }
 
-    // 大纲模式方向键导航
     if (outlineMode && (key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight')) {
       e.preventDefault();
       JmindOutline.navigate(key);
       return;
     }
 
-    // 大纲模式：Shift+Tab 提升层级
     if (outlineMode && e.shiftKey && key === 'Tab') {
       e.preventDefault();
       if (selected) doOutdent(selected);
@@ -1006,7 +990,6 @@
   // ---------- 触摸支持 ----------
   let touchStartX = 0, touchStartY = 0, touchStartDist = 0, touchStartScale = 1;
 
-  // 检查触摸目标是否在 UI 元素上（浮动菜单、字体面板、搜索栏等）
   function isTouchOnUI(clientX, clientY) {
     const el = document.elementFromPoint(clientX, clientY);
     if (!el) return false;
@@ -1020,7 +1003,6 @@
         if (!editorInput.contains(document.elementFromPoint(touch.clientX, touch.clientY))) stopEditing(true);
         return;
       }
-      // 如果触摸目标在 UI 元素上（浮动菜单、字体面板等），跳过节点检测
       if (e.touches.length === 1 && isTouchOnUI(e.touches[0].clientX, e.touches[0].clientY)) {
         return;
       }
@@ -1065,6 +1047,29 @@
           JmindRenderer.setOffset(dragStartOffsetX + dx, dragStartOffsetY + dy);
           refreshView();
         }
+      } else if (e.touches.length === 1 && dragMode === 'node') {
+        const touch = e.touches[0];
+        const rect = container.getBoundingClientRect();
+        const dx = touch.clientX - rect.left - touchStartX;
+        const dy = touch.clientY - rect.top - touchStartY;
+        if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+          isDragging = true;
+          JmindRenderer.setDragging(true);
+        }
+        if (isDragging && dragNodeId) {
+          const tx = touch.clientX - rect.left;
+          const ty = touch.clientY - rect.top;
+          const target = JmindRenderer.findDropTarget(tx, ty, JmindLayout.getPositions(), dragNodeId);
+          if (target && target.id !== dragNodeId) {
+            dragOverNodeId = target.id;
+            dragOverPosition = target.position;
+          } else {
+            dragOverNodeId = null;
+            dragOverPosition = null;
+          }
+          updateDropIndicator();
+          refreshView();
+        }
       } else if (e.touches.length === 2 && dragMode === 'pinch') {
         const dist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
@@ -1101,6 +1106,7 @@
       dragMode = null;
       dragNodeId = null;
       isDragging = false;
+      JmindRenderer.setDragging(false);
       dragOverNodeId = null;
       dragOverPosition = null;
       container.classList.remove('dragging-node');
@@ -1147,7 +1153,6 @@
       if (selected) startEditing(selected);
       else showToast(L('toast_pick_node'), 'warning');
     });
-    // 字体按钮
     const fontBtn = document.getElementById('btn-font');
     if (fontBtn) fontBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1177,11 +1182,9 @@
     });
     document.getElementById('btn-clear').addEventListener('click', doClearAll);
 
-    // 右键菜单
     contextMenu.querySelectorAll('.menu-item').forEach(item => {
       item.addEventListener('click', () => {
         const action = item.dataset.action;
-        // 子菜单类操作（颜色/字体）保持菜单打开，其余操作收起菜单
         if (action !== 'change-color' && action !== 'font-style') {
           contextMenu.classList.remove('active');
         }
@@ -1212,7 +1215,6 @@
       });
     });
 
-    // 搜索栏
     searchInput.addEventListener('input', (e) => performSearch(e.target.value));
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? searchPrev() : searchNext(); }
@@ -1222,7 +1224,6 @@
     searchPrevBtn.addEventListener('click', searchPrev);
     searchClose.addEventListener('click', closeSearch);
 
-    // 节点浮动快捷菜单
     nodePopup.addEventListener('mousedown', (e) => e.stopPropagation());
     nodePopup.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
     nodePopup.querySelectorAll('.popup-btn').forEach(btn => {
@@ -1242,7 +1243,6 @@
       });
     });
 
-    // 画布鼠标事件
     canvas.addEventListener('mousedown', onMouseDown);
     canvas.addEventListener('mousemove', onMouseMove);
     canvas.addEventListener('mouseup', onMouseUp);
@@ -1251,7 +1251,6 @@
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('contextmenu', onContextMenu);
 
-    // 大纲面板右键菜单
     if (outlinePanel) {
       outlinePanel.addEventListener('contextmenu', (e) => {
         e.preventDefault();
@@ -1271,14 +1270,12 @@
       });
     }
 
-    // 全局
     document.addEventListener('mousedown', (e) => {
       if (!contextMenu.contains(e.target)) {
         contextMenu.classList.remove('active');
         if (colorPicker) colorPicker.classList.remove('active');
         if (fontPanel) fontPanel.classList.remove('active');
       }
-      // 点击浮动字体面板外部关闭
       if (fontToolbar && !fontToolbar.contains(e.target) && !e.target.closest('#btn-font')) {
         hideFontToolbar();
       }

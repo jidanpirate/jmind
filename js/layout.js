@@ -85,10 +85,16 @@ const JmindLayout = (function () {
         else leftChildren.push(child);
       });
 
-      const totalHeight = computeSubtreeHeight(mindMap, collapsedSet);
+      // 分别计算左右两侧子树总高度，各自围绕根节点垂直居中
+      let rightTotalHeight = 0;
+      rightChildren.forEach(child => { rightTotalHeight += computeSubtreeHeight(child, collapsedSet) + V_GAP; });
+      if (rightTotalHeight > 0) rightTotalHeight -= V_GAP;
+      let leftTotalHeight = 0;
+      leftChildren.forEach(child => { leftTotalHeight += computeSubtreeHeight(child, collapsedSet) + V_GAP; });
+      if (leftTotalHeight > 0) leftTotalHeight -= V_GAP;
 
       // 右侧
-      let rightY = -totalHeight / 2;
+      let rightY = -rightTotalHeight / 2;
       rightChildren.forEach(child => {
         const childHeight = computeSubtreeHeight(child, collapsedSet);
         const childSize = measureText(child.text, child);
@@ -99,7 +105,7 @@ const JmindLayout = (function () {
       });
 
       // 左侧
-      let leftY = -totalHeight / 2;
+      let leftY = -leftTotalHeight / 2;
       leftChildren.forEach(child => {
         const childHeight = computeSubtreeHeight(child, collapsedSet);
         const childSize = measureText(child.text, child);
