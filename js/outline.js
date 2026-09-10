@@ -33,6 +33,7 @@ const JmindOutline = (function () {
   // ---------- 渲染 ----------
   function render(selectedId) {
     if (!panel) return;
+    const scrollTop = panel.scrollTop; // 保存滚动位置
     const mindMap = JmindCore.getMindMap();
     const collapsed = JmindCore.getCollapsedSet();
     panel.innerHTML = '';
@@ -45,6 +46,11 @@ const JmindOutline = (function () {
     list.className = 'outline-list';
     list.appendChild(buildRow(mindMap, collapsed, selectedId, 0));
     panel.appendChild(list);
+
+    // 恢复滚动位置（避免重新渲染后跳到顶部）
+    requestAnimationFrame(() => {
+      if (panel) panel.scrollTop = scrollTop;
+    });
   }
 
   // ---------- 大纲工具栏（缩进/后退按钮） ----------
@@ -169,8 +175,11 @@ const JmindOutline = (function () {
     input.value = node.text || '';
     applyInputStyle(input, node);
     textEl.replaceWith(input);
-    input.focus();
+    // 防止 focus 时浏览器自动滚动导致位置跳动
+    const scrollTop = panel.scrollTop;
+    input.focus({ preventScroll: true });
     input.select();
+    panel.scrollTop = scrollTop;
 
     let finished = false;
     const finish = (save) => {
