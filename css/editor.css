@@ -246,6 +246,156 @@ body { overflow: hidden; height: 100vh; width: 100vw; user-select: none; -webkit
 
 @keyframes menuIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
+/* ---------- 浮动字体面板 ---------- */
+.font-toolbar {
+  position: absolute;
+  z-index: 35;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.15), 0 0 0 1px var(--border);
+  animation: fontToolbarIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-wrap: wrap;
+  max-width: 420px;
+}
+
+.font-toolbar.active { display: flex; }
+
+@keyframes fontToolbarIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.font-tool-btn {
+  width: 32px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  font-family: var(--font);
+  transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.font-tool-btn:hover { background: var(--border-light); transform: translateY(-1px); }
+.font-tool-btn:active { transform: scale(0.92); }
+.font-tool-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.font-tool-btn-bold { font-weight: 700; }
+.font-tool-btn-italic { font-style: italic; }
+.font-tool-btn-underline { text-decoration: underline; }
+
+.font-tool-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+.font-tool-select {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--font);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.12s;
+  min-width: 60px;
+}
+
+.font-tool-select:hover { border-color: var(--accent); }
+.font-tool-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
+
+.font-tool-color-wrapper {
+  position: relative;
+}
+
+.font-tool-color-btn {
+  width: 36px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px 4px;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+
+.font-tool-color-btn:hover { background: var(--border-light); border-color: var(--accent); transform: translateY(-1px); }
+.font-tool-color-btn:active { transform: scale(0.92); }
+
+.font-tool-color-icon {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.font-tool-color-bar {
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+  background: #5B9BD5;
+}
+
+.font-tool-color-picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  width: 160px;
+  animation: colorPickerIn 0.15s ease;
+}
+
+.font-tool-color-picker.active { display: flex; }
+
+@keyframes colorPickerIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.font-tool-color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.12s, border-color 0.12s;
+}
+
+.font-tool-color-swatch:hover { transform: scale(1.15); border-color: var(--text); }
+
 /* ---------- 拖拽指示 ---------- */
 .drop-indicator {
   position: absolute;
@@ -372,7 +522,7 @@ body { overflow: hidden; height: 100vh; width: 100vw; user-select: none; -webkit
   overflow: auto;
   display: none;
   background: var(--bg);
-  padding: 20px 24px 60px;
+  padding: 16px 24px 80px;
   user-select: text;
   -webkit-user-select: text;
 }
@@ -383,6 +533,50 @@ body { overflow: hidden; height: 100vh; width: 100vw; user-select: none; -webkit
 .canvas-container.outline-mode .drop-indicator { display: none !important; }
 .canvas-container.outline-mode { background-image: none; cursor: default; }
 .canvas-container.outline-mode:active { cursor: default; }
+
+/* ---------- 大纲工具栏（缩进/后退按钮） ---------- */
+.outline-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.outline-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.12s, box-shadow 0.15s;
+}
+
+.outline-tool-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.outline-tool-btn:active {
+  transform: scale(0.96);
+  box-shadow: none;
+}
 
 .outline-list, .outline-item ul { list-style: none; margin: 0; padding: 0; }
 
@@ -630,4 +824,31 @@ body { overflow: hidden; height: 100vh; width: 100vw; user-select: none; -webkit
 @keyframes statusSlide {
   from { opacity: 0; transform: translateY(100%); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- 移动端适配 ---------- */
+@media (max-width: 768px) {
+  .font-toolbar {
+    max-width: calc(100vw - 24px);
+    padding: 6px 8px;
+    gap: 3px;
+  }
+  .font-tool-btn {
+    width: 30px;
+    height: 28px;
+    font-size: 13px;
+  }
+  .font-tool-select {
+    padding: 4px 6px;
+    font-size: 11px;
+    min-width: 50px;
+  }
+  .outline-toolbar {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .outline-tool-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
 }
