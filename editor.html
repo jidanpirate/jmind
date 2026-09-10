@@ -27,6 +27,7 @@
             <button id="btn-add-child" data-i18n-title="add_child_title">＋ <span class="label" data-i18n="add_child">子节点</span></button>
             <button id="btn-add-sibling" data-i18n-title="add_sibling_title">↔ <span class="label" data-i18n="add_sibling">兄弟</span></button>
             <button id="btn-edit" data-i18n-title="edit_title">✏️ <span class="label" data-i18n="edit">编辑</span></button>
+            <button id="btn-font" data-i18n-title="font_title">🅰️ <span class="label" data-i18n="font">字体</span></button>
             <button id="btn-delete" class="danger" data-i18n-title="delete_title">✕ <span class="label" data-i18n="delete">删除</span></button>
             <div class="divider"></div>
             <button id="btn-collapse" data-i18n-title="collapse_title">▾ <span class="label" data-i18n="collapse">折叠</span></button>
@@ -54,6 +55,38 @@
         <!-- 画布 -->
         <div class="canvas-container" id="canvas-container">
             <canvas id="canvas"></canvas>
+
+            <!-- 浮动字体面板 -->
+            <div class="font-toolbar" id="font-toolbar">
+                <button type="button" class="font-tool-btn font-tool-btn-bold" data-font-prop="bold" title="加粗"><b>B</b></button>
+                <button type="button" class="font-tool-btn font-tool-btn-italic" data-font-prop="italic" title="斜体"><i>I</i></button>
+                <button type="button" class="font-tool-btn font-tool-btn-underline" data-font-prop="underline" title="下划线"><u>U</u></button>
+                <div class="font-tool-divider"></div>
+                <select class="font-tool-select" id="font-tool-size" title="字号">
+                    <option value="12">12</option>
+                    <option value="14" selected>14</option>
+                    <option value="16">16</option>
+                    <option value="18">18</option>
+                    <option value="20">20</option>
+                    <option value="24">24</option>
+                    <option value="32">32</option>
+                </select>
+                <select class="font-tool-select" id="font-tool-family" title="字体">
+                    <option value="default">默认</option>
+                    <option value="song">宋体</option>
+                    <option value="hei">黑体</option>
+                    <option value="kai">楷体</option>
+                    <option value="mono">等宽</option>
+                </select>
+                <div class="font-tool-divider"></div>
+                <div class="font-tool-color-wrapper">
+                    <button type="button" class="font-tool-color-btn" id="font-tool-color-btn" title="文字颜色">
+                        <span class="font-tool-color-icon">A</span>
+                        <span class="font-tool-color-bar" id="font-tool-color-bar"></span>
+                    </button>
+                    <div class="font-tool-color-picker" id="font-tool-color-picker"></div>
+                </div>
+            </div>
 
             <!-- 节点浮动快捷菜单 -->
             <div class="node-popup" id="node-popup">
