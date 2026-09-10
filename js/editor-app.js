@@ -1006,11 +1006,22 @@
   // ---------- 触摸支持 ----------
   let touchStartX = 0, touchStartY = 0, touchStartDist = 0, touchStartScale = 1;
 
+  // 检查触摸目标是否在 UI 元素上（浮动菜单、字体面板、搜索栏等）
+  function isTouchOnUI(clientX, clientY) {
+    const el = document.elementFromPoint(clientX, clientY);
+    if (!el) return false;
+    return !!(el.closest('.node-popup') || el.closest('.font-toolbar') || el.closest('.search-bar') || el.closest('.context-menu') || el.closest('.node-editor') || el.closest('.outline-toolbar') || el.closest('.drop-indicator'));
+  }
+
   function initTouch() {
     container.addEventListener('touchstart', (e) => {
       if (editingNodeId && editorInput) {
         const touch = e.touches[0];
         if (!editorInput.contains(document.elementFromPoint(touch.clientX, touch.clientY))) stopEditing(true);
+        return;
+      }
+      // 如果触摸目标在 UI 元素上（浮动菜单、字体面板等），跳过节点检测
+      if (e.touches.length === 1 && isTouchOnUI(e.touches[0].clientX, e.touches[0].clientY)) {
         return;
       }
       if (e.touches.length === 1) {
@@ -1213,6 +1224,7 @@
 
     // 节点浮动快捷菜单
     nodePopup.addEventListener('mousedown', (e) => e.stopPropagation());
+    nodePopup.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
     nodePopup.querySelectorAll('.popup-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const action = btn.dataset.popupAction;
@@ -1222,6 +1234,7 @@
           case 'add-child': doAddChild(selected); break;
           case 'add-sibling': doAddSibling(selected); break;
           case 'edit': startEditing(selected); break;
+          case 'font': toggleFontToolbar(); break;
           case 'toggle-collapse': doToggleCollapse(selected); break;
           case 'duplicate': doDuplicate(); break;
           case 'delete': doDelete(selected); break;
