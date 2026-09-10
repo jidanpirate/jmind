@@ -525,13 +525,16 @@ body { overflow: hidden; height: 100vh; width: 100vw; user-select: none; -webkit
   padding: 16px 24px 80px;
   user-select: text;
   -webkit-user-select: text;
+  /* 覆盖父容器 canvas-container 的 touch-action:none，保证大纲可纵向滚动且点击能合成 mousedown/click */
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .canvas-container.outline-mode .outline-panel { display: block; }
 .canvas-container.outline-mode #canvas { display: none; }
 .canvas-container.outline-mode .node-popup,
 .canvas-container.outline-mode .drop-indicator { display: none !important; }
-.canvas-container.outline-mode { background-image: none; cursor: default; }
+.canvas-container.outline-mode { background-image: none; cursor: default; touch-action: pan-y; }
 .canvas-container.outline-mode:active { cursor: default; }
 
 /* ---------- 大纲工具栏（缩进/后退按钮） ---------- */
